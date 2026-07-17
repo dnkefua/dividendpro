@@ -1,0 +1,541 @@
+import React, { useState, useEffect } from "react";
+import { 
+  initialStocks, 
+  initialTransactions, 
+  initialPayouts, 
+  initialSettings 
+} from "./data";
+import { db } from "./firebase";
+import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { Stock, Transaction, Payout, UserSettings } from "./types";
+import PortfolioView from "./components/PortfolioView";
+import ScannerView from "./components/ScannerView";
+import AnalysisView from "./components/AnalysisView";
+import Top10View from "./components/Top10View";
+import ProfileView from "./components/ProfileView";
+import { 
+  TrendingUp, 
+  Layers, 
+  Search, 
+  Award, 
+  Settings, 
+  Bell, 
+  ChevronRight, 
+  Bot, 
+  X, 
+  Send, 
+  Check, 
+  User, 
+  Activity,
+  AlertCircle
+} from "lucide-react";
+
+export default function App() {
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings">("Portfolio");
+  
+  // Dynamic state loaded from localStorage if exists
+  const [stocks, setStocks] = useState<Stock[]>(() => {
+    const saved = localStorage.getItem("divpro_stocks");
+    return saved ? JSON.parse(saved) : initialStocks;
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem("divpro_transactions");
+    return saved ? JSON.parse(saved) : initialTransactions;
+  });
+
+  const [payouts, setPayouts] = useState<Payout[]>(() => {
+    const saved = localStorage.getItem("divpro_payouts");
+    return saved ? JSON.parse(saved) : initialPayouts;
+  });
+
+  const [settings, setSettings] = useState<UserSettings>(() => {
+    const saved = localStorage.getItem("divpro_settings");
+    return saved ? JSON.parse(saved) : initialSettings;
+  });
+
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    const saved = localStorage.getItem("divpro_watchlist");
+    return saved ? JSON.parse(saved) : ["O", "AVGO", "PEP"];
+  });
+
+  const [selectedStockSymbol, setSelectedStockSymbol] = useState<string>("O");
+
+  // Notifications bell dropdown
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [systemNotifications, setSystemNotifications] = useState([
+    { id: 1, title: "Dividend Received: AAPL", desc: "+$142.50 was successfully deposited.", time: "Today, 10:42 AM", unread: true },
+    { id: 2, title: "Upcoming Ex-Date: Realty Income (O)", desc: "Ex-Date scheduled for Oct 31, 2024. Confirm holdings.", time: "Yesterday", unread: false },
+    { id: 3, title: "Yield Change: GNL", desc: "Global Net Lease yield updated to 9.30% after recent valuation cycle.", time: "2 days ago", unread: false }
+  ]);
+
+  // AI Chat Assistant Drawer
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([
+    { sender: "bot", text: "Hello! I am your Lumina Finance DividendPro AI Assistant. Ask me anything about compound yield modeling, dividend traps, or specific stocks in our database." }
+  ]);
+  const [currentChatInput, setCurrentChatInput] = useState("");
+  const [isSendingToChat, setIsSendingToChat] = useState(false);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem("divpro_stocks", JSON.stringify(stocks));
+  }, [stocks]);
+
+  useEffect(() => {
+    localStorage.setItem("divpro_transactions", JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem("divpro_payouts", JSON.stringify(payouts));
+  }, [payouts]);
+
+  useEffect(() => {
+    localStorage.setItem("divpro_settings", JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem("divpro_watchlist", JSON.stringify(watchlist));
+  }, [watchlist]);
+
+  // Sync Transactions & Watchlist with Firebase Firestore
+  useEffect(() => {
+    try {
+      const unsubTransactions = onSnapshot(collection(db, "transactions"), (snapshot) => {
+        const list: Transaction[] = [];
+        snapshot.forEach((doc) => {
+          list.push({ id: doc.id, ...doc.data() } as Transaction);
+        });
+        if (list.length > 0) {
+          setTransactions(list);
+        }
+      }, (error) => {
+        console.warn("Firestore sync failed or database offline, falling back to localStorage:", error);
+      });
+
+      const unsubWatchlist = onSnapshot(doc(db, "settings", "watchlist"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && Array.isArray(data.items)) {
+            setWatchlist(data.items);
+          }
+        }
+      }, (error) => {
+        console.warn("Firestore watchlist sync failed, falling back to localStorage:", error);
+      });
+
+      return () => {
+        unsubTransactions();
+        unsubWatchlist();
+      };
+    } catch (e) {
+      console.warn("Firebase Firestore could not be initialized:", e);
+    }
+  }, []);
+
+  const activeStock = stocks.find(s => s.symbol === selectedStockSymbol) || stocks[0];
+
+  // Handler functions
+  const handleAddTransaction = async (newTx: Omit<Transaction, "id">) => {
+    const txId = "tx-" + (transactions.length + 1);
+    const tx: Transaction = {
+      ...newTx,
+      id: txId
+    };
+    const updated = [tx, ...transactions];
+    setTransactions(updated);
+
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, "transactions", txId), {
+        type: tx.type,
+        asset: tx.asset,
+        date: tx.date,
+        amount: tx.amount,
+        isIncome: tx.isIncome
+      });
+    } catch (e) {
+      console.warn("Failed to write transaction to Firestore:", e);
+    }
+
+    // Add notification
+    setSystemNotifications(prev => [
+      {
+        id: prev.length + 1,
+        title: tx.type === "Buy" ? `Asset Purchased: ${tx.asset}` : `Dividend Received: ${tx.asset}`,
+        desc: tx.type === "Buy" ? `Bought asset worth $${tx.amount.toLocaleString()}.` : `Deposited dividend income of $${tx.amount.toFixed(2)}.`,
+        time: "Just Now",
+        unread: true
+      },
+      ...prev
+    ]);
+  };
+
+  const handleAddCustomStock = (newStock: Stock) => {
+    setStocks(prev => [newStock, ...prev]);
+  };
+
+  const handleUpdateSettings = (newSettings: UserSettings) => {
+    setSettings(newSettings);
+  };
+
+  const handleToggleWatchlist = async (symbol: string) => {
+    const nextWatchlist = watchlist.includes(symbol)
+      ? watchlist.filter(s => s !== symbol)
+      : [...watchlist, symbol];
+
+    setWatchlist(nextWatchlist);
+
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, "settings", "watchlist"), {
+        items: nextWatchlist
+      });
+    } catch (e) {
+      console.warn("Failed to write watchlist to Firestore:", e);
+    }
+  };
+
+  const handleSelectStock = (symbol: string) => {
+    setSelectedStockSymbol(symbol);
+    setActiveView("Analysis");
+  };
+
+  const handleOpenAiAssistant = (initialPrompt?: string) => {
+    setIsAiDrawerOpen(true);
+    if (initialPrompt) {
+      handleSendChatMessage(initialPrompt);
+    }
+  };
+
+  const handleSendChatMessage = async (textToSend?: string) => {
+    const prompt = textToSend || currentChatInput;
+    if (!prompt.trim()) return;
+
+    // Add user message immediately
+    setChatMessages(prev => [...prev, { sender: "user", text: prompt }]);
+    if (!textToSend) setCurrentChatInput("");
+    setIsSendingToChat(true);
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setChatMessages(prev => [...prev, { sender: "bot", text: data.text }]);
+      } else {
+        setChatMessages(prev => [...prev, { sender: "bot", text: `Error: ${data.error || "Failed to reach AI server. Please verify your GEMINI_API_KEY."}` }]);
+      }
+    } catch (err) {
+      console.error(err);
+      setChatMessages(prev => [...prev, { sender: "bot", text: "Connection failed. Please check that the server is online and your API key is provided in Settings > Secrets." }]);
+    } finally {
+      setIsSendingToChat(false);
+    }
+  };
+
+  const handleMarkNotificationsRead = () => {
+    setSystemNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  return (
+    <div className={`min-h-screen bg-[#f8f9ff] flex flex-col font-sans text-primary relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
+      {/* Top Professional Navigation Bar */}
+      <header className="sticky top-0 bg-white border-b border-outline-variant z-50 shadow-xs" id="main-header">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+          
+          {/* Logo Brand Title */}
+          <div 
+            onClick={() => setActiveView("Portfolio")}
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+              <TrendingUp className="w-5 h-5 text-secondary" />
+            </div>
+            <div>
+              <span className="font-extrabold text-lg tracking-tight text-primary">Dividend<span className="text-secondary font-semibold">Pro</span></span>
+              <p className="text-[8px] font-bold font-mono tracking-widest text-outline uppercase leading-none mt-0.5">LUMINA FINANCE</p>
+            </div>
+          </div>
+
+          {/* Desktop Core Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1">
+            {[
+              { id: "Portfolio", label: "Portfolio", icon: Layers },
+              { id: "Scanner", label: "Scanner", icon: Search },
+              { id: "Top10", label: "Top 10 List", icon: Award },
+              { id: "Settings", label: "Settings", icon: Settings }
+            ].map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id as any)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    activeView === item.id 
+                      ? "bg-surface-container-high text-primary" 
+                      : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right Action Icons Group */}
+          <div className="flex items-center gap-3">
+            
+            {/* AI Floating Trigger Quick Action */}
+            <button 
+              onClick={() => setIsAiDrawerOpen(true)}
+              className="bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-white p-2.5 rounded-full transition-all duration-200 shadow-sm relative group"
+              title="Lumina AI Analyst Chatbot"
+            >
+              <Bot className="w-5 h-5" />
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-secondary rounded-full animate-pulse"></span>
+            </button>
+
+            {/* Notification Bell Dropdown Button */}
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) handleMarkNotificationsRead();
+                }}
+                className="p-2.5 rounded-full hover:bg-surface-container-low text-primary transition-all relative"
+                title="System alerts"
+              >
+                <Bell className="w-5 h-5" />
+                {systemNotifications.some(n => n.unread) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-secondary rounded-full"></span>
+                )}
+              </button>
+
+              {/* Notification Box Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-outline-variant rounded-2xl shadow-xl z-50 p-4 animate-scale-up">
+                  <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
+                    <span className="font-bold text-primary">Recent Notifications</span>
+                    <button 
+                      onClick={() => setShowNotifications(false)}
+                      className="text-outline hover:text-primary text-xs font-semibold"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {systemNotifications.map((notif) => (
+                      <div key={notif.id} className="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-outline transition-all">
+                        <div className="flex justify-between items-start gap-1">
+                          <p className="text-xs font-bold text-primary leading-tight">{notif.title}</p>
+                          {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-1"></span>}
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed mt-1">{notif.desc}</p>
+                        <p className="text-[9px] text-outline font-mono mt-1">{notif.time}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Profile Avatar Link */}
+            <div 
+              onClick={() => setActiveView("Settings")}
+              className="flex items-center gap-2.5 cursor-pointer pl-1.5 border-l border-outline-variant hover:opacity-85 transition-opacity"
+            >
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-outline-variant">
+                <img 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  src={settings.avatarUrl}
+                />
+              </div>
+              <div className="hidden lg:block text-left">
+                <p className="text-xs font-bold text-primary leading-tight">{settings.name}</p>
+                <p className="text-[9px] text-on-surface-variant font-mono leading-none mt-0.5">PREMIUM PRO</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </header>
+
+      {/* Main Body Content with Layout Constraints */}
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8 pb-24 md:pb-12">
+        {activeView === "Portfolio" && (
+          <PortfolioView 
+            stocks={stocks}
+            transactions={transactions}
+            payouts={payouts}
+            onAddTransaction={handleAddTransaction}
+            onSelectStock={handleSelectStock}
+            isPro={settings.isPro}
+            onOpenAiAssistant={handleOpenAiAssistant}
+          />
+        )}
+        {activeView === "Scanner" && (
+          <ScannerView 
+            stocks={stocks}
+            onSelectStock={handleSelectStock}
+            isPro={settings.isPro}
+            onOpenAiAssistant={handleOpenAiAssistant}
+            onAddCustomStock={handleAddCustomStock}
+          />
+        )}
+        {activeView === "Analysis" && (
+          <AnalysisView 
+            stock={activeStock}
+            isPro={settings.isPro}
+            onAddTransaction={handleAddTransaction}
+            onAddWatchlist={handleToggleWatchlist}
+            isWatched={watchlist.includes(activeStock.symbol)}
+          />
+        )}
+        {activeView === "Top10" && (
+          <Top10View 
+            stocks={stocks}
+            onSelectStock={handleSelectStock}
+            isPro={settings.isPro}
+            onOpenAiAssistant={handleOpenAiAssistant}
+          />
+        )}
+        {activeView === "Settings" && (
+          <ProfileView 
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+          />
+        )}
+      </main>
+
+      {/* Mobile Sticky Bottom Navigation Bar */}
+      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant py-2 px-3 z-50 flex justify-around shadow-lg" id="mobile-nav-bar">
+        {[
+          { id: "Portfolio", label: "Portfolio", icon: Layers },
+          { id: "Scanner", label: "Scanner", icon: Search },
+          { id: "Analysis", label: "Analysis", icon: Activity },
+          { id: "Top10", label: "Top 10", icon: Award },
+          { id: "Settings", label: "Settings", icon: Settings }
+        ].map(item => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveView(item.id as any)}
+              className={`flex flex-col items-center gap-1 p-1 text-[10px] font-bold ${
+                activeView === item.id 
+                  ? "text-secondary font-extrabold" 
+                  : "text-on-surface-variant hover:text-primary"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </footer>
+
+      {/* Interactive Global AI Chat Assistant Drawer */}
+      {isAiDrawerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in" id="ai-drawer-backdrop">
+          <div className="bg-white max-w-lg w-full h-full flex flex-col shadow-2xl relative animate-slide-left border-l border-outline-variant">
+            
+            {/* Drawer Header */}
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-secondary p-2 rounded-xl text-white">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-primary">Lumina Dividend AI</h3>
+                  <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">Real-time financial modelling and growth simulation</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAiDrawerOpen(false)}
+                className="p-2 rounded-full hover:bg-surface-container-high text-primary transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat History Messages */}
+            <div className="flex-grow overflow-y-auto p-6 space-y-4 bg-[#fcfdff]" id="chat-messages-container">
+              {chatMessages.map((msg, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div className={`max-w-[85%] rounded-2xl p-4 shadow-xs text-sm leading-relaxed ${
+                    msg.sender === "user" 
+                      ? "bg-primary text-on-primary rounded-tr-none" 
+                      : "bg-surface-container-low text-primary border border-outline-variant/50 rounded-tl-none whitespace-pre-wrap"
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+
+              {isSendingToChat && (
+                <div className="flex justify-start">
+                  <div className="bg-surface-container-low text-primary border border-outline-variant/50 rounded-2xl rounded-tl-none p-4 max-w-[85%] flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-secondary animate-pulse" />
+                    <span className="text-xs font-mono font-bold animate-pulse text-on-surface-variant">Lumina is computing yields...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Suggestion Questions */}
+            <div className="px-6 py-2 bg-surface-container-lowest border-t border-outline-variant/40 flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+              {[
+                { label: "Is AVGO safe?", q: "What is the dividend safety of Broadcom (AVGO) given its current payout ratio?" },
+                { label: "High yield trap?", q: "Explain why Global Net Lease (GNL) has a 9.30% yield and if it's a dividend trap." },
+                { label: "Compound projection", q: "Show me a mathematical compound interest simulation where I invest $2,000 every month in Realty Income (O) at a 5.64% yield. How much monthly income in 15 years?" }
+              ].map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSendChatMessage(s.q)}
+                  className="bg-white border border-outline-variant rounded-full px-3.5 py-1.5 text-xs text-on-surface-variant hover:text-primary hover:border-primary transition-colors font-semibold shadow-xs shrink-0"
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Drawer Chat Input Form */}
+            <div className="p-4 border-t border-outline-variant bg-white">
+              <form 
+                onSubmit={(e) => { e.preventDefault(); handleSendChatMessage(); }}
+                className="flex gap-2"
+              >
+                <input 
+                  type="text" 
+                  value={currentChatInput}
+                  onChange={(e) => setCurrentChatInput(e.target.value)}
+                  placeholder="Ask about dividend stocks, calculations, compound formulas..."
+                  className="flex-grow px-4 py-3 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-primary font-medium bg-surface/40"
+                />
+                <button 
+                  type="submit"
+                  disabled={isSendingToChat || !currentChatInput.trim()}
+                  className="bg-primary text-on-primary px-5 py-3 rounded-xl flex items-center justify-center transition-all hover:bg-opacity-90 disabled:opacity-50 active:scale-95 shadow-sm"
+                >
+                  <Send className="w-4.5 h-4.5" />
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
