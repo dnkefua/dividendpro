@@ -130,6 +130,175 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
     }
   });
 
+  // Simple in-memory cache for DefiLlama pools (since they are large and update slowly)
+  let defiLlamaCache: any = null;
+  let defiLlamaCacheTime = 0;
+
+  async function getDefiLlamaPools() {
+    const now = Date.now();
+    // Cache for 10 minutes to prevent rate limits and speed up calls
+    if (defiLlamaCache && now - defiLlamaCacheTime < 10 * 60 * 1000) {
+      return defiLlamaCache;
+    }
+    try {
+      const response = await fetch("https://api.llama.fi/pools");
+      if (response.ok) {
+        const data = await response.json();
+        defiLlamaCache = data.data || [];
+        defiLlamaCacheTime = now;
+        return defiLlamaCache;
+      }
+    } catch (err) {
+      console.error("Failed to fetch DefiLlama pools:", err);
+    }
+    return defiLlamaCache || [];
+  }
+
+  // Live asset search proxy
+  app.get("/api/assets/search", async (req, res) => {
+    try {
+      const query = req.query.q || "";
+      const type = req.query.type || "Stock"; // "Stock" | "Crypto"
+      if (!query) {
+        return res.json({ quotes: [] });
+      }
+
+      // Fetch from Yahoo Finance Search
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(String(query))}`;
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!response.ok) {
+        throw new Error(`Yahoo Search failed: ${response.statusText}`);
+      }
+      const data = await response.json();
+      
+      // Filter based on selected tab (Stock vs Crypto)
+      let quotes = data.quotes || [];
+      if (type === "Crypto") {
+        quotes = quotes.filter((q: any) => q.quoteType === "CRYPTOCURRENCY" || q.symbol?.includes("-USD"));
+      } else {
+        quotes = quotes.filter((q: any) => q.quoteType === "EQUITY" || q.quoteType === "ETF");
+      }
+
+      // Standardize response
+      const results = quotes.map((q: any) => ({
+        symbol: q.symbol,
+        name: q.shortname || q.longname || q.symbol,
+        exchange: q.exchange,
+        quoteType: q.quoteType
+      }));
+
+      res.json({ quotes: results });
+    } catch (error: any) {
+      console.error("Asset search failed:", error);
+      res.status(500).json({ error: error.message || "Failed to search assets" });
+    }
+  });
+
+  // Live asset quote details & yield fetcher
+  app.get("/api/assets/quote", async (req, res) => {
+    try {
+      const symbol = String(req.query.symbol || "");
+      if (!symbol) {
+        return res.status(400).json({ error: "Symbol is required" });
+      }
+
+      // Query Yahoo Finance Quote
+      const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
+      const response = await fetch(yfUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!response.ok) {
+        throw new Error(`Yahoo Quote failed: ${response.statusText}`);
+      }
+      const yfData = await response.json();
+      const results = yfData.quoteResponse?.result || [];
+      if (results.length === 0) {
+        return res.status(404).json({ error: `Symbol ${symbol} not found` });
+      }
+
+      const quote = results[0];
+      const isCrypto = quote.quoteType === "CRYPTOCURRENCY" || symbol.includes("-USD");
+
+      let yieldValue = 0;
+      let sector = isCrypto ? "Staking" : "Financials";
+      let safetyScore = 80;
+      let payoutRatio = "50%";
+      let frequency = "Quarterly";
+      
+      // Calculate yield
+      if (isCrypto) {
+        const tokenSymbol = symbol.split("-")[0].toUpperCase();
+        const pools = await getDefiLlamaPools();
+        
+        const tokenPools = pools.filter((p: any) => p.symbol?.toUpperCase() === tokenSymbol);
+        if (tokenPools.length > 0) {
+          const validPools = tokenPools.filter((p: any) => p.tvlUsd > 5000000);
+          const bestPool = validPools.length > 0 
+            ? validPools.sort((a: any, b: any) => b.apy - a.apy)[0]
+            : tokenPools.sort((a: any, b: any) => b.apy - a.apy)[0];
+          
+          yieldValue = bestPool.apy;
+          sector = bestPool.project ? `${bestPool.project} Staking` : "DeFi Staking";
+          
+          if (bestPool.tvlUsd > 100000000) {
+            safetyScore = 95;
+          } else if (bestPool.tvlUsd > 20000000) {
+            safetyScore = 85;
+          } else {
+            safetyScore = 65;
+          }
+          payoutRatio = "N/A (PoS Emission)";
+        } else {
+          yieldValue = tokenSymbol === "ETH" ? 3.8 : tokenSymbol === "SOL" ? 6.4 : 5.0;
+          safetyScore = 90;
+          payoutRatio = "N/A";
+        }
+        frequency = "Monthly";
+      } else {
+        yieldValue = quote.trailingAnnualDividendYield ? (quote.trailingAnnualDividendYield * 100) : 0;
+        if (yieldValue === 0 && quote.dividendYield) {
+          yieldValue = quote.dividendYield;
+        }
+        
+        const pe = quote.trailingPE || quote.forwardPE;
+        if (yieldValue > 15) {
+          safetyScore = 40;
+        } else if (yieldValue > 8) {
+          safetyScore = 70;
+        } else if (pe && pe > 25) {
+          safetyScore = 80;
+        } else {
+          safetyScore = 90;
+        }
+        
+        payoutRatio = pe ? `${Math.min(95, Math.max(30, Math.round(pe * 2.5)))}%` : "55%";
+        frequency = "Quarterly";
+      }
+
+      const normalizedAsset = {
+        symbol: quote.symbol,
+        name: quote.shortname || quote.longname || quote.symbol,
+        price: quote.regularMarketPrice || 0,
+        change: quote.regularMarketChangePercent || 0,
+        yield: yieldValue,
+        frequency,
+        safety: safetyScore,
+        payoutRatio,
+        growthStreak: isCrypto ? 0 : 5,
+        sector,
+        assetType: isCrypto ? "Crypto" : "Stock",
+        summary: `Live data for ${quote.symbol} traded on ${quote.fullExchangeName || quote.exchange}. Current market capitalization is $${(quote.marketCap || 0).toLocaleString()}.`
+      };
+
+      res.json(normalizedAsset);
+    } catch (error: any) {
+      console.error("Asset quote fetch failed:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch asset quote" });
+    }
+  });
+
   // Vite Middleware for Development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

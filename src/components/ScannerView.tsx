@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Stock } from "../types";
 import { 
   Search, 
@@ -33,6 +33,57 @@ export default function ScannerView({
   const [selectedSector, setSelectedSector] = useState("All Sectors");
   const [selectedFreq, setSelectedFreq] = useState("Any");
   const [assetTypeFilter, setAssetTypeFilter] = useState<"All" | "Stock" | "Crypto">("All");
+
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Debounce search effect to fetch real-world matches from backend API
+  useEffect(() => {
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const type = assetTypeFilter === "All" ? "Stock" : assetTypeFilter;
+    const delayDebounce = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(`/api/assets/search?q=${encodeURIComponent(searchTerm)}&type=${type}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data.quotes || []);
+        }
+      } catch (e) {
+        console.error("Live search failed:", e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, assetTypeFilter]);
+
+  const handleSelectLiveAsset = async (symbol: string) => {
+    try {
+      setSearchTerm("");
+      setSearchResults([]);
+
+      const response = await fetch(`/api/assets/quote?symbol=${encodeURIComponent(symbol)}`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Add to parent stock list if it doesn't already exist
+        if (!stocks.some(s => s.symbol.toUpperCase() === symbol.toUpperCase())) {
+          onAddCustomStock(data);
+        }
+        
+        // Navigate user straight to the Analysis View for this real asset
+        onSelectStock(data.symbol);
+      }
+    } catch (e) {
+      console.error("Failed to load live asset quote:", e);
+    }
+  };
 
   // Form state for creating a custom stock
   const [showAddCustomModal, setShowAddCustomModal] = useState(false);
@@ -153,7 +204,7 @@ export default function ScannerView({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5 items-end bg-surface-container-low/40 p-4 md:p-6 rounded-2xl border border-outline-variant/50" id="scanner-filter-bar">
         
         {/* Search Input */}
-        <div className="md:col-span-4 space-y-2">
+        <div className="md:col-span-4 space-y-2 relative">
           <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Search Symbols</label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
@@ -162,9 +213,37 @@ export default function ScannerView({
               placeholder="e.g. AAPL, O, SCHD..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition-all shadow-sm font-medium text-primary"
+              className="w-full pl-10 pr-12 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition-all shadow-sm font-medium text-primary"
             />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+              </div>
+            )}
           </div>
+
+          {/* Live Search Suggestions Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="absolute left-0 right-0 mt-2 bg-white border border-outline-variant rounded-xl shadow-2xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+              {searchResults.map((res: any) => (
+                <button
+                  key={res.symbol}
+                  onClick={() => handleSelectLiveAsset(res.symbol)}
+                  className="w-full text-left px-4 py-3 hover:bg-surface-container-lowest transition-colors border-b border-outline-variant/30 last:border-b-0 flex justify-between items-center"
+                >
+                  <div className="min-w-0 pr-2">
+                    <span className="text-sm font-bold text-primary mr-2 block sm:inline">{res.symbol}</span>
+                    <span className="text-xs text-on-surface-variant truncate block sm:inline">{res.name}</span>
+                  </div>
+                  <span className="text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-bold uppercase font-mono shrink-0">
+                    {res.quoteType === "CRYPTOCURRENCY" || res.symbol?.includes("-USD") ? "Crypto" : "Stock"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Min Yield */}
