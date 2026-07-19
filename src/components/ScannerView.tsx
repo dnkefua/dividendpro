@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Filter
 } from "lucide-react";
+import { UserSettings } from "../types";
+import { formatCurrency } from "../utils";
 
 interface ScannerViewProps {
   stocks: Stock[];
@@ -20,6 +22,7 @@ interface ScannerViewProps {
   isPro: boolean;
   onOpenAiAssistant: (prompt?: string) => void;
   onAddCustomStock: (stock: Stock) => void;
+  settings: UserSettings;
 }
 
 export default function ScannerView({
@@ -27,13 +30,15 @@ export default function ScannerView({
   onSelectStock,
   isPro,
   onOpenAiAssistant,
-  onAddCustomStock
+  onAddCustomStock,
+  settings
 }: ScannerViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [minYield, setMinYield] = useState("Any");
   const [selectedSector, setSelectedSector] = useState("All Sectors");
   const [selectedFreq, setSelectedFreq] = useState("All");
   const [selectedCountry, setSelectedCountry] = useState("All");
+  const [selectedExchange, setSelectedExchange] = useState("All");
   const [assetTypeFilter, setAssetTypeFilter] = useState<"All" | "Stock" | "Crypto">("All");
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -66,7 +71,7 @@ export default function ScannerView({
     }, 400);
 
     return () => clearTimeout(delayDebounce);
-  }, [searchTerm, assetTypeFilter, selectedCountry, selectedFreq]);
+  }, [searchTerm, assetTypeFilter, selectedCountry, selectedExchange, selectedFreq]);
 
   const handleSelectLiveAsset = async (symbol: string) => {
     try {
@@ -127,10 +132,16 @@ export default function ScannerView({
 
       const matchSector = selectedSector === "All Sectors" || s.sector === selectedSector;
       const matchFreq = selectedFreq === "All" || selectedFreq === "Any" || s.frequency === selectedFreq;
+      
+      const sCountry = s.country || (s.assetType === "Crypto" ? "Global" : "US");
+      const matchCountry = selectedCountry === "All" || sCountry === selectedCountry;
 
-      return matchesAssetType && matchSearch && matchYield && matchSector && matchFreq;
+      const sExchange = s.exchange || (s.assetType === "Crypto" ? "Crypto" : "NYSE");
+      const matchExchange = selectedExchange === "All" || sExchange === selectedExchange;
+
+      return matchesAssetType && matchSearch && matchYield && matchSector && matchFreq && matchCountry && matchExchange;
     });
-  }, [stocks, searchTerm, minYield, selectedSector, selectedFreq, assetTypeFilter]);
+  }, [stocks, searchTerm, minYield, selectedSector, selectedFreq, assetTypeFilter, selectedCountry, selectedExchange]);
 
   const handleCreateCustomStock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,15 +275,34 @@ export default function ScannerView({
               <option value="All">Global</option>
               <option value="US">USA</option>
               <option value="UK">UK</option>
-              <option value="Canada">Canada</option>
-              <option value="Germany">Germany</option>
-              <option value="Australia">Australia</option>
-              <option value="France">France</option>
+              <option value="CA">Canada</option>
+              <option value="AU">Australia</option>
+              <option value="FR">France</option>
             </select>
           </div>
         ) : (
           <div className="md:col-span-2 space-y-2 hidden md:block"></div>
         )}
+
+        {/* Exchange Filter */}
+        {assetTypeFilter !== "Crypto" ? (
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Exchange</label>
+            <select 
+              value={selectedExchange}
+              onChange={(e) => setSelectedExchange(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium transition-all shadow-sm text-primary appearance-none"
+            >
+              <option value="All">All</option>
+              <option value="NYSE">NYSE</option>
+              <option value="NASDAQ">NASDAQ</option>
+              <option value="LSE">LSE</option>
+              <option value="TSX">TSX</option>
+              <option value="ASX">ASX</option>
+              <option value="Euronext">Euronext</option>
+            </select>
+          </div>
+        ) : null}
 
         {/* Min Yield */}
         <div className="md:col-span-2 space-y-2">
@@ -396,7 +426,7 @@ export default function ScannerView({
                     </td>
                     <td className="px-6 py-5">
                       <span className="font-mono text-sm font-semibold text-primary">
-                        ${s.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(s.price, settings.currency)}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-secondary font-extrabold text-sm font-mono">

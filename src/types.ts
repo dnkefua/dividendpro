@@ -19,6 +19,8 @@ export interface Stock {
   rank?: string; // e.g. "01"
   dividendGrowthHistory: { year: number; payout: number }[]; // 10 years
   assetType?: "Stock" | "Crypto";
+  country?: string; // e.g. "US", "UK", "CA"
+  exchange?: string; // e.g. "NYSE", "LSE", "Crypto"
 }
 
 export interface Transaction {
@@ -48,4 +50,6 @@ export interface UserSettings {
   compactView: boolean;
   biometricUnlock: boolean;
   isPro: boolean;
+  portfolioBudget: number;
+  currency: string;
 }

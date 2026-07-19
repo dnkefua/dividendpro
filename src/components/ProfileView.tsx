@@ -13,7 +13,8 @@ import {
   Layout, 
   Laptop,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  CircleDollarSign
 } from "lucide-react";
 
 interface ProfileViewProps {
@@ -148,6 +149,50 @@ export default function ProfileView({
                 </button>
               </div>
             )}
+          </section>
+
+          {/* Portfolio Global Settings */}
+          <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="flex items-center gap-2 pb-2 border-b border-outline-variant/60">
+              <CircleDollarSign className="w-5 h-5 text-secondary" />
+              <h2 className="text-lg font-bold text-primary">Global Portfolio Settings</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-primary">Baseline Budget</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-on-surface-variant sm:text-sm font-bold">{settings.currency === 'GBP' ? '£' : settings.currency === 'EUR' ? '€' : settings.currency === 'JPY' ? '¥' : '$'}</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={settings.portfolioBudget}
+                    onChange={(e) => onUpdateSettings({ ...settings, portfolioBudget: Number(e.target.value) })}
+                    className="block w-full pl-7 pr-3 py-2 border border-outline-variant rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all sm:text-sm"
+                    placeholder="10000"
+                  />
+                </div>
+                <p className="text-[10px] text-on-surface-variant font-medium">Used as the base assumption for portfolio simulators and Top 10 stats.</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-primary">Display Currency</label>
+                <select
+                  value={settings.currency}
+                  onChange={(e) => onUpdateSettings({ ...settings, currency: e.target.value })}
+                  className="block w-full pl-3 pr-10 py-2 text-base border border-outline-variant focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary sm:text-sm rounded-lg bg-surface appearance-none"
+                >
+                  <option value="USD">USD ($) - US Dollar</option>
+                  <option value="EUR">EUR (€) - Euro</option>
+                  <option value="GBP">GBP (£) - British Pound</option>
+                  <option value="CAD">CAD ($) - Canadian Dollar</option>
+                  <option value="AUD">AUD ($) - Australian Dollar</option>
+                  <option value="JPY">JPY (¥) - Japanese Yen</option>
+                </select>
+                <p className="text-[10px] text-on-surface-variant font-medium">Globally format all monetary values according to this symbol.</p>
+              </div>
+            </div>
           </section>
 
           {/* Notification Preferences */}

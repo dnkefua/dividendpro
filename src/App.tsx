@@ -391,6 +391,7 @@ export default function App() {
             onSelectStock={handleSelectStock}
             isPro={settings.isPro}
             onOpenAiAssistant={handleOpenAiAssistant}
+            settings={settings}
           />
         )}
         {activeView === "Scanner" && (
@@ -400,6 +401,7 @@ export default function App() {
             isPro={settings.isPro}
             onOpenAiAssistant={handleOpenAiAssistant}
             onAddCustomStock={handleAddCustomStock}
+            settings={settings}
           />
         )}
         {activeView === "Analysis" && (
@@ -409,6 +411,7 @@ export default function App() {
             onAddTransaction={handleAddTransaction}
             onAddWatchlist={handleToggleWatchlist}
             isWatched={watchlist.includes(activeStock.symbol)}
+            settings={settings}
           />
         )}
         {activeView === "Top10" && (
@@ -418,6 +421,7 @@ export default function App() {
             isPro={settings.isPro}
             onOpenAiAssistant={handleOpenAiAssistant}
             onAddCustomStock={handleAddCustomStock}
+            settings={settings}
           />
         )}
         {activeView === "Settings" && (
@@ -429,6 +433,7 @@ export default function App() {
         {activeView === "Backtest" && (
           <BacktestView 
             stocks={stocks}
+            settings={settings}
           />
         )}
       </main>

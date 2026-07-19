@@ -25,6 +25,7 @@ interface PortfolioViewProps {
   onSelectStock: (symbol: string) => void;
   isPro: boolean;
   onOpenAiAssistant: (initialPrompt?: string) => void;
+  settings: UserSettings;
 }
 
 export default function PortfolioView({
@@ -34,7 +35,8 @@ export default function PortfolioView({
   onAddTransaction,
   onSelectStock,
   isPro,
-  onOpenAiAssistant
+  onOpenAiAssistant,
+  settings
 }: PortfolioViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTx, setNewTx] = useState({
@@ -70,7 +72,7 @@ export default function PortfolioView({
       tx.type,
       tx.asset,
       tx.date,
-      `$${tx.amount.toFixed(2)}`,
+      `${formatCurrency(tx.amount, settings.currency)}`,
       tx.isIncome ? "Yes" : "No"
     ]);
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -93,7 +95,7 @@ export default function PortfolioView({
             Global Portfolio
           </p>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-primary transition-all duration-300">
-            ${portfolioValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatCurrency(portfolioValue, settings.currency)}
           </h1>
           <div className="flex items-center gap-2 mt-2">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary-container text-on-secondary-container">
@@ -139,7 +141,7 @@ export default function PortfolioView({
             </div>
             <div>
               <p className="text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Estimated Payout</p>
-              <p className="text-3xl font-extrabold text-primary">${estimatedPayout.toLocaleString()}</p>
+              <p className="text-3xl font-extrabold text-primary">{formatCurrency(estimatedPayout, settings.currency, { maximumFractionDigits: 0 })}</p>
             </div>
           </div>
 
@@ -236,7 +238,7 @@ export default function PortfolioView({
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-bold font-mono ${tx.isIncome ? "text-secondary" : "text-on-surface-variant"}`}>
-                    {tx.isIncome ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {tx.isIncome ? "+" : "-"}{formatCurrency(tx.amount, settings.currency)}
                   </p>
                 </div>
               </div>
@@ -315,7 +317,7 @@ export default function PortfolioView({
                     </div>
                   </td>
                   <td className="px-6 py-4.5 font-bold font-mono text-primary text-sm">
-                    ${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(p.amount, settings.currency)}
                   </td>
                   <td className="px-6 py-4.5 text-sm text-on-surface-variant font-mono">{p.exDate}</td>
                   <td className="px-6 py-4.5 text-sm text-on-surface-variant font-mono">{p.payDate}</td>

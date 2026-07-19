@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { Stock } from "../types";
-import { getAssetColor } from "../utils";
+import { Stock, UserSettings } from "../types";
+import { getAssetColor, formatCurrency } from "../utils";
 import { 
   History, 
   ChevronRight, 
   TrendingUp, 
   Award, 
   Info,
-  Plus
+  Plus,
+  Calculator
 } from "lucide-react";
 
 interface Top10ViewProps {
@@ -16,6 +17,7 @@ interface Top10ViewProps {
   isPro: boolean;
   onOpenAiAssistant: (prompt?: string) => void;
   onAddCustomStock: (stock: Omit<Stock, "id">) => void;
+  settings: UserSettings;
 }
 
 export default function Top10View({
@@ -23,7 +25,8 @@ export default function Top10View({
   onSelectStock,
   isPro,
   onOpenAiAssistant,
-  onAddCustomStock
+  onAddCustomStock,
+  settings
 }: Top10ViewProps) {
   const [freqTab, setFreqTab] = React.useState<string>("Monthly");
   
@@ -54,10 +57,10 @@ export default function Top10View({
     const totalSafety = combined.reduce((acc, curr) => acc + curr.safetyScore, 0);
     const avgYield = totalYield / combined.length;
     const avgSafety = totalSafety / combined.length;
-    // Estimated monthly income on $10,000 investment
-    const monthlyIncome = (10000 * avgYield / 100) / 12;
+    // Estimated monthly income on portfolio budget investment
+    const monthlyIncome = (settings.portfolioBudget * avgYield / 100) / 12;
     return { avgYield, monthlyIncome, avgSafety };
-  }, [topStocks, topCrypto]);
+  }, [topStocks, topCrypto, settings.portfolioBudget]);
 
   // Modal State
   const [showAddCustomModal, setShowAddCustomModal] = useState(false);
@@ -215,8 +218,8 @@ export default function Top10View({
           <p className="text-xs text-slate-300">Top 5 Picks (Combined)</p>
         </div>
         <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-700/50 pt-4 sm:pt-0 sm:pl-6">
-          <p className="text-[10px] font-bold font-mono text-secondary-container uppercase tracking-wider">Monthly Profit on $10k</p>
-          <p className="text-3xl font-extrabold font-mono text-white">${stats.monthlyIncome.toFixed(2)}</p>
+          <p className="text-[10px] font-bold font-mono text-secondary-container uppercase tracking-wider">Monthly Profit on {formatCurrency(settings.portfolioBudget, settings.currency, { maximumFractionDigits: 0 })}</p>
+          <p className="text-3xl font-extrabold font-mono text-white">{formatCurrency(stats.monthlyIncome, settings.currency)}</p>
           <p className="text-xs text-slate-300">Passive yield generation</p>
         </div>
         <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-700/50 pt-4 sm:pt-0 sm:pl-6">

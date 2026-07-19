@@ -10,5 +10,24 @@ export function getAssetColor(symbol: string): string {
   const s = 70 + (hash % 20);
   const l = 25 + (hash % 15);
   
+  
   return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
+// Format a number as currency based on a currency code
+export function formatCurrency(amount: number, currencyCode: string = "USD", options?: Intl.NumberFormatOptions): string {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currencyCode,
+      ...options
+    }).format(amount);
+  } catch (e) {
+    // Fallback if currency code is somehow invalid
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      ...options
+    }).format(amount);
+  }
 }

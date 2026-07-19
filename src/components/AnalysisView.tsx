@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createChart, ColorType, AreaSeries } from "lightweight-charts";
-import { Stock } from "../types";
-import { getAssetColor } from "../utils";
+import { Stock, Transaction, UserSettings } from "../types";
+import { getAssetColor, formatCurrency } from "../utils";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -28,6 +28,7 @@ interface AnalysisViewProps {
   onAddTransaction: (tx: { type: "Buy" | "Dividend"; asset: string; amount: number; date: string; isIncome: boolean }) => void;
   onAddWatchlist: (symbol: string) => void;
   isWatched: boolean;
+  settings: UserSettings;
 }
 
 export default function AnalysisView({
@@ -35,7 +36,8 @@ export default function AnalysisView({
   isPro,
   onAddTransaction,
   onAddWatchlist,
-  isWatched
+  isWatched,
+  settings
 }: AnalysisViewProps) {
   const [selectedPeriod, setSelectedPeriod] = useState("1M");
   const isCrypto = stock.assetType === "Crypto";
@@ -209,7 +211,7 @@ export default function AnalysisView({
       isIncome: false
     });
     setShowBuyModal(false);
-    alert(`Successfully simulated purchase of ${buyShares} shares of ${stock.symbol} for $${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}!`);
+    alert(`Successfully simulated purchase of ${buyShares} shares of ${stock.symbol} for ${formatCurrency(totalCost, settings.currency)}!`);
   };
 
   // Safe status styling
@@ -237,7 +239,7 @@ export default function AnalysisView({
               {stock.name}
             </h2>
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold font-mono text-primary">${stock.price.toFixed(2)}</span>
+              <span className="text-2xl font-bold font-mono text-primary">{formatCurrency(stock.price, settings.currency)}</span>
               <span className="text-secondary font-mono text-xs font-bold flex items-center bg-secondary-container/30 px-2 py-0.5 rounded-full">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
                 +1.24 (2.34%)
@@ -370,12 +372,12 @@ export default function AnalysisView({
             {isCrypto ? "Estimated Yield" : "Annual Payout"}
           </span>
           <span className="text-2xl font-extrabold text-primary font-mono">
-            {isCrypto ? `${stock.yield.toFixed(2)}%` : `$${(stock.price * stock.yield / 100).toFixed(2)}`}
+            {isCrypto ? `${stock.yield.toFixed(2)}%` : `${formatCurrency(stock.price * stock.yield / 100, settings.currency)}`}
           </span>
           <p className="mt-4 text-[10px] text-on-surface-variant leading-tight">
             {isCrypto 
               ? `Staking payout distributed continuously (simulated monthly)`
-              : `Paid out in ${stock.frequency.toLowerCase()} installments of $${(stock.price * stock.yield / 100 / (stock.frequency === "Monthly" ? 12 : 4)).toFixed(3)}`
+              : `Paid out in ${stock.frequency.toLowerCase()} installments of ${formatCurrency(stock.price * stock.yield / 100 / (stock.frequency === "Monthly" ? 12 : 4), settings.currency)}`
             }
           </p>
         </div>
@@ -428,7 +430,7 @@ export default function AnalysisView({
                     className={`w-full rounded-t-sm transition-all group-hover:bg-secondary/80 cursor-pointer ${
                       i === stock.dividendGrowthHistory.length - 1 ? "bg-secondary" : "bg-surface-container-highest"
                     }`}
-                    title={`Payout: $${item.payout.toFixed(2)}`}
+                    title={`Payout: ${formatCurrency(item.payout, settings.currency)}`}
                   ></div>
                   <span className="text-[9px] text-outline mt-2 font-mono">{item.year}</span>
                 </div>
@@ -446,7 +448,7 @@ export default function AnalysisView({
             <div className="p-6 space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-on-surface-variant font-medium">Market Cap</span>
-                <span className="font-bold text-primary font-mono">${stock.marketCap}</span>
+                <span className="font-bold text-primary font-mono">{settings.currency === 'USD' ? '$' : settings.currency === 'EUR' ? '€' : settings.currency === 'GBP' ? '£' : settings.currency === 'JPY' ? '¥' : '$'}{stock.marketCap}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant font-medium">P/AFFO</span>
@@ -580,11 +582,11 @@ export default function AnalysisView({
               <div className="bg-surface-container-low p-4 rounded-xl space-y-2 text-sm font-medium">
                 <div className="flex justify-between text-on-surface-variant">
                   <span>Price per Share</span>
-                  <span className="font-mono font-bold">${stock.price.toFixed(2)}</span>
+                  <span className="font-mono font-bold">{formatCurrency(stock.price, settings.currency)}</span>
                 </div>
                 <div className="flex justify-between text-primary pt-2 border-t border-outline-variant font-bold">
                   <span>Estimated Cost</span>
-                  <span className="font-mono text-base">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="font-mono text-base">{formatCurrency(totalCost, settings.currency)}</span>
                 </div>
               </div>
 

@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { AreaSeries, ColorType, createChart } from "lightweight-charts";
-import { Stock } from "../types";
+import { Stock, UserSettings } from "../types";
 import { Activity, Play, Settings, DollarSign, Calendar } from "lucide-react";
+import { formatCurrency } from "../utils";
 
 interface BacktestViewProps {
   stocks: Stock[];
+  settings: UserSettings;
 }
 
-export default function BacktestView({ stocks }: BacktestViewProps) {
+export default function BacktestView({ stocks, settings }: BacktestViewProps) {
   const [selectedSymbol, setSelectedSymbol] = useState(stocks[0]?.symbol || "");
-  const [initialCapital, setInitialCapital] = useState<number>(100000);
+  const [initialCapital, setInitialCapital] = useState<number>(settings.portfolioBudget);
   const [years, setYears] = useState<number>(10);
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<any>(null);
@@ -161,8 +163,8 @@ export default function BacktestView({ stocks }: BacktestViewProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant">
                   <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant font-mono">Final Balance</p>
-                  <p className="text-2xl font-extrabold text-primary font-mono mt-1">
-                    ${results.finalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  <p className="text-3xl font-extrabold font-mono text-secondary">
+                    {formatCurrency(results.finalBalance, settings.currency, { maximumFractionDigits: 0 })}
                   </p>
                 </div>
                 <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant">
@@ -173,8 +175,8 @@ export default function BacktestView({ stocks }: BacktestViewProps) {
                 </div>
                 <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant">
                   <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant font-mono">Projected Annual Income</p>
-                  <p className="text-2xl font-extrabold text-primary font-mono mt-1">
-                    ${results.annualIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  <p className="text-3xl font-extrabold font-mono text-primary">
+                    {formatCurrency(results.annualIncome, settings.currency, { maximumFractionDigits: 0 })}
                   </p>
                 </div>
               </div>
