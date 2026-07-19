@@ -13,6 +13,7 @@ import ScannerView from "./components/ScannerView";
 import AnalysisView from "./components/AnalysisView";
 import Top10View from "./components/Top10View";
 import ProfileView from "./components/ProfileView";
+import BacktestView from "./components/BacktestView";
 import { 
   TrendingUp, 
   Layers, 
@@ -31,12 +32,23 @@ import {
 } from "lucide-react";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings">("Portfolio");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Backtest">("Portfolio");
   
-  // Dynamic state loaded from localStorage if exists
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
-    return saved ? JSON.parse(saved) : initialStocks;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure all predefined initialStocks are included and up-to-date
+      const merged = [...initialStocks];
+      // Add any custom stocks the user created that aren't in initialStocks
+      parsed.forEach((p: Stock) => {
+        if (!merged.find(m => m.symbol === p.symbol)) {
+          merged.push(p);
+        }
+      });
+      return merged;
+    }
+    return initialStocks;
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -266,6 +278,7 @@ export default function App() {
             {[
               { id: "Portfolio", label: "Portfolio", icon: Layers },
               { id: "Scanner", label: "Scanner", icon: Search },
+              { id: "Backtest", label: "Backtest", icon: Activity },
               { id: "Top10", label: "Top 10 List", icon: Award },
               { id: "Settings", label: "Settings", icon: Settings }
             ].map(item => {
@@ -404,12 +417,18 @@ export default function App() {
             onSelectStock={handleSelectStock}
             isPro={settings.isPro}
             onOpenAiAssistant={handleOpenAiAssistant}
+            onAddCustomStock={handleAddCustomStock}
           />
         )}
         {activeView === "Settings" && (
           <ProfileView 
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
+          />
+        )}
+        {activeView === "Backtest" && (
+          <BacktestView 
+            stocks={stocks}
           />
         )}
       </main>
@@ -419,7 +438,7 @@ export default function App() {
         {[
           { id: "Portfolio", label: "Portfolio", icon: Layers },
           { id: "Scanner", label: "Scanner", icon: Search },
-          { id: "Analysis", label: "Analysis", icon: Activity },
+          { id: "Backtest", label: "Backtest", icon: Activity },
           { id: "Top10", label: "Top 10", icon: Award },
           { id: "Settings", label: "Settings", icon: Settings }
         ].map(item => {

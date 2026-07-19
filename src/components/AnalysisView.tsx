@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createChart, ColorType, AreaSeries } from "lightweight-charts";
 import { Stock } from "../types";
+import { getAssetColor } from "../utils";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -16,8 +17,10 @@ import {
   Activity,
   Sparkles,
   RefreshCw,
-  Send
+  Send,
+  Layers
 } from "lucide-react";
+import { OptionsAnalysis } from "./OptionsAnalysis";
 
 interface AnalysisViewProps {
   stock: Stock;
@@ -50,6 +53,8 @@ export default function AnalysisView({
   const totalCost = buyShares * stock.price;
 
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const [overlayActive, setOverlayActive] = useState(false);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -94,6 +99,42 @@ export default function AnalysisView({
     newSeries.setData(dataPoints);
     chart.timeScale().fitContent();
 
+    // Secure WebSocket Connection for Real-Time Ticks
+    const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${wsProto}//${window.location.host}/ws/marketdata`);
+    
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ action: "subscribe", symbol: stock.symbol }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "tick" && msg.symbol === stock.symbol) {
+          // Update the chart with the real-time tick
+          const today = new Date().toISOString().split('T')[0];
+          newSeries.update({ time: today, value: msg.price });
+        }
+      } catch (e) {
+        // Ignore parse errors from welcome messages
+      }
+    };
+
+    let overlaySeries: any = null;
+    if (overlayActive) {
+      fetch("/api/lse/macro")
+        .then(res => res.json())
+        .then(data => {
+          overlaySeries = chart.addLineSeries({
+            color: "#6366f1", // Indigo
+            lineWidth: 2,
+            priceScaleId: 'left' // Put overlay on left axis
+          });
+          chart.priceScale('left').applyOptions({ visible: true });
+          overlaySeries.setData(data.data);
+        });
+    }
+
     const handleResize = () => {
       chart.applyOptions({ width: container.clientWidth });
     };
@@ -102,9 +143,10 @@ export default function AnalysisView({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      ws.close();
       chart.remove();
     };
-  }, [stock.price, stock.symbol, isCrypto]);
+  }, [stock.price, stock.symbol, isCrypto, overlayActive]);
 
   // Auto-fetch analysis when stock changes
   useEffect(() => {
@@ -181,7 +223,10 @@ export default function AnalysisView({
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="bg-primary-container text-on-primary text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+              <span 
+                className="text-white text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-sm"
+                style={{ backgroundColor: getAssetColor(stock.symbol) }}
+              >
                 NYSE: {stock.symbol}
               </span>
               <span className="text-on-surface-variant font-mono text-xs font-semibold uppercase tracking-wider">
@@ -230,8 +275,20 @@ export default function AnalysisView({
         {/* Main Price Chart Wave */}
         <div className="md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-primary">Price Performance</h3>
-            <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl">
+            <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+              Price Performance
+              <button 
+                onClick={() => setOverlayActive(!overlayActive)}
+                className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md font-mono uppercase tracking-wider transition-colors ${
+                  overlayActive ? "bg-indigo-100 text-indigo-700" : "bg-surface text-on-surface-variant hover:bg-surface-container"
+                }`}
+                title="Toggle 10-Year Treasury Yield Macro Overlay"
+              >
+                <Layers size={14} />
+                {overlayActive ? "Overlay Active" : "Add Macro Overlay"}
+              </button>
+            </h3>
+            <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl hidden sm:flex">
               {["1D", "1W", "1M", "1Y", "5Y"].map((period) => (
                 <button
                   key={period}
@@ -484,6 +541,19 @@ export default function AnalysisView({
             </button>
           </form>
         </div>
+
+        {/* Options Analysis Component (LSE) */}
+        {!isCrypto && (
+          <div className="md:col-span-12 bg-white border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-primary">Options Chain Yields</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">Real-time options data provided by LSE</p>
+              </div>
+            </div>
+            <OptionsAnalysis symbol={stock.symbol} />
+          </div>
+        )}
 
       </div>
 

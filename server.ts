@@ -3,6 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import { WebSocketServer, WebSocket } from "ws";
 
 dotenv.config();
 
@@ -154,17 +155,64 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
     return defiLlamaCache || [];
   }
 
+  // Curated lists for advanced filters where free APIs lack native support
+  const CURATED_ASSETS: Record<string, string[]> = {
+    "Stock_Monthly": ["O", "MAIN", "STAG", "EPR", "AGNC", "PSEC", "LTC", "GLAD", "SLG"],
+    "Stock_Quarterly": ["AAPL", "MSFT", "JNJ", "PG", "KO", "PEP", "XOM", "CVX", "ABBV"],
+    "Stock_Yearly": ["BMW.DE", "RIO.L", "MBG.DE", "SU.PA", "AIR.PA", "VOW3.DE", "BAS.DE"],
+    "Crypto_Continuous": ["ETH-USD", "SOL-USD", "AVAX-USD", "ADA-USD", "DOT-USD"],
+    "Crypto_Daily": ["USDC-USD", "USDT-USD", "DAI-USD", "AAVE-USD", "COMP-USD"],
+    "Crypto_Weekly": ["ATOM-USD", "NEAR-USD", "MATIC-USD", "SNX-USD", "CRV-USD"],
+  };
+
+  const COUNTRY_SUFFIXES: Record<string, string> = {
+    "US": "",
+    "UK": ".L",
+    "Canada": ".TO",
+    "Germany": ".DE",
+    "Australia": ".AX",
+    "France": ".PA",
+    "Japan": ".T",
+  };
+
   // Live asset search proxy
   app.get("/api/assets/search", async (req, res) => {
     try {
-      const query = req.query.q || "";
-      const type = req.query.type || "Stock"; // "Stock" | "Crypto"
+      let query = String(req.query.q || "");
+      const type = String(req.query.type || "Stock"); // "Stock" | "Crypto"
+      const country = String(req.query.country || "All");
+      const frequency = String(req.query.frequency || "All");
+
+      // Handle Curated Lists if frequency is provided and query is empty or specifically requesting Explore
+      if (frequency !== "All" && !query) {
+        const curatedKey = `${type}_${frequency}`;
+        const symbols = CURATED_ASSETS[curatedKey] || [];
+        
+        // Return dummy quote objects that the UI will fetch full details for
+        const results = symbols.map(sym => ({
+          symbol: sym,
+          name: sym, // Will be resolved by the quote endpoint
+          exchange: "Curated",
+          quoteType: type === "Crypto" ? "CRYPTOCURRENCY" : "EQUITY"
+        }));
+        return res.json({ quotes: results });
+      }
+
       if (!query) {
         return res.json({ quotes: [] });
       }
 
+      // Append Country Suffix if applicable and it's a stock search
+      let searchQuery = query;
+      if (type === "Stock" && country !== "All" && COUNTRY_SUFFIXES[country] !== undefined) {
+        const suffix = COUNTRY_SUFFIXES[country];
+        if (suffix && !searchQuery.includes(".")) {
+          searchQuery = `${searchQuery}${suffix}`;
+        }
+      }
+
       // Fetch from Yahoo Finance Search
-      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(String(query))}`;
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
       });
@@ -299,6 +347,30 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
     }
   });
 
+  // --- LSE REST API Mocks ---
+  app.get("/api/lse/options", (req, res) => {
+    const symbol = String(req.query.symbol || "AAPL");
+    // Mocking the LSE Options Chain Response for Covered Calls
+    const currentPrice = 150; // Mock base price
+    const mockOptions = [
+      { strike: currentPrice * 1.05, expiry: "30 Days", premium: 2.45, impliedVol: 24.5 },
+      { strike: currentPrice * 1.10, expiry: "30 Days", premium: 1.10, impliedVol: 22.1 },
+      { strike: currentPrice * 1.15, expiry: "30 Days", premium: 0.45, impliedVol: 20.8 }
+    ];
+    res.json({ symbol, currentPrice, chain: mockOptions });
+  });
+
+  app.get("/api/lse/macro", (req, res) => {
+    // Mocking LSE Macroeconomic data for overlays
+    res.json({
+      series: "US 10-Year Treasury Yield",
+      data: Array.from({length: 30}, (_, i) => ({
+        time: new Date(Date.now() - (30 - i) * 86400000).toISOString().split('T')[0],
+        value: 4.0 + Math.sin(i * 0.2) * 0.5
+      }))
+    });
+  });
+
   // Vite Middleware for Development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -314,8 +386,40 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const httpServer = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  // --- Secure WebSocket Proxy ---
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws/marketdata" });
+  wss.on("connection", (clientWs) => {
+    // Open a secure connection to LSE
+    const lseWs = new WebSocket("wss://data-ws.londonstrategicedge.com");
+
+    lseWs.on("open", () => {
+      // Authenticate securely from the backend
+      lseWs.send(JSON.stringify({
+        action: "auth",
+        api_key: process.env.LSE_API_KEY || "lse_live_mock"
+      }));
+    });
+
+    lseWs.on("message", (data) => {
+      // Relay messages to the frontend client
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(data.toString());
+      }
+    });
+
+    clientWs.on("message", (data) => {
+      // Relay client subscriptions to LSE
+      if (lseWs.readyState === WebSocket.OPEN) {
+        lseWs.send(data.toString());
+      }
+    });
+
+    clientWs.on("close", () => lseWs.close());
+    lseWs.on("close", () => clientWs.close());
   });
 }
 

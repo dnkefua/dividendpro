@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Stock } from "../types";
+import { getAssetColor } from "../utils";
 import { 
   Search, 
   ChevronRight, 
@@ -31,7 +32,8 @@ export default function ScannerView({
   const [searchTerm, setSearchTerm] = useState("");
   const [minYield, setMinYield] = useState("Any");
   const [selectedSector, setSelectedSector] = useState("All Sectors");
-  const [selectedFreq, setSelectedFreq] = useState("Any");
+  const [selectedFreq, setSelectedFreq] = useState("All");
+  const [selectedCountry, setSelectedCountry] = useState("All");
   const [assetTypeFilter, setAssetTypeFilter] = useState<"All" | "Stock" | "Crypto">("All");
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -39,7 +41,8 @@ export default function ScannerView({
 
   // Debounce search effect to fetch real-world matches from backend API
   useEffect(() => {
-    if (!searchTerm || searchTerm.trim().length < 2) {
+    // If no search term and no specific frequency, clear results
+    if ((!searchTerm || searchTerm.trim().length < 2) && selectedFreq === "All") {
       setSearchResults([]);
       return;
     }
@@ -48,7 +51,9 @@ export default function ScannerView({
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/assets/search?q=${encodeURIComponent(searchTerm)}&type=${type}`);
+        const response = await fetch(
+          `/api/assets/search?q=${encodeURIComponent(searchTerm)}&type=${type}&country=${selectedCountry}&frequency=${selectedFreq}`
+        );
         if (response.ok) {
           const data = await response.json();
           setSearchResults(data.quotes || []);
@@ -58,10 +63,10 @@ export default function ScannerView({
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 400);
 
     return () => clearTimeout(delayDebounce);
-  }, [searchTerm, assetTypeFilter]);
+  }, [searchTerm, assetTypeFilter, selectedCountry, selectedFreq]);
 
   const handleSelectLiveAsset = async (symbol: string) => {
     try {
@@ -121,7 +126,7 @@ export default function ScannerView({
       else if (minYield === "6%+") matchYield = s.yield >= 6;
 
       const matchSector = selectedSector === "All Sectors" || s.sector === selectedSector;
-      const matchFreq = selectedFreq === "Any" || s.frequency === selectedFreq;
+      const matchFreq = selectedFreq === "All" || selectedFreq === "Any" || s.frequency === selectedFreq;
 
       return matchesAssetType && matchSearch && matchYield && matchSector && matchFreq;
     });
@@ -204,13 +209,14 @@ export default function ScannerView({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5 items-end bg-surface-container-low/40 p-4 md:p-6 rounded-2xl border border-outline-variant/50" id="scanner-filter-bar">
         
         {/* Search Input */}
-        <div className="md:col-span-4 space-y-2 relative">
-          <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Search Symbols</label>
+        {/* Search Input */}
+        <div className="md:col-span-3 space-y-2 relative">
+          <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Search / Explore</label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
             <input 
               type="text" 
-              placeholder="e.g. AAPL, O, SCHD..." 
+              placeholder="e.g. AAPL, O..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-12 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition-all shadow-sm font-medium text-primary"
@@ -238,13 +244,35 @@ export default function ScannerView({
                     <span className="text-xs text-on-surface-variant truncate block sm:inline">{res.name}</span>
                   </div>
                   <span className="text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-bold uppercase font-mono shrink-0">
-                    {res.quoteType === "CRYPTOCURRENCY" || res.symbol?.includes("-USD") ? "Crypto" : "Stock"}
+                    {res.exchange || (res.quoteType === "CRYPTOCURRENCY" || res.symbol?.includes("-USD") ? "Crypto" : "Stock")}
                   </span>
                 </button>
               ))}
             </div>
           )}
         </div>
+
+        {/* Country Filter */}
+        {assetTypeFilter !== "Crypto" ? (
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Country</label>
+            <select 
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium transition-all shadow-sm text-primary appearance-none"
+            >
+              <option value="All">Global</option>
+              <option value="US">USA</option>
+              <option value="UK">UK</option>
+              <option value="Canada">Canada</option>
+              <option value="Germany">Germany</option>
+              <option value="Australia">Australia</option>
+              <option value="France">France</option>
+            </select>
+          </div>
+        ) : (
+          <div className="md:col-span-2 space-y-2 hidden md:block"></div>
+        )}
 
         {/* Min Yield */}
         <div className="md:col-span-2 space-y-2">
@@ -262,7 +290,7 @@ export default function ScannerView({
         </div>
 
         {/* Sector Filter */}
-        <div className="md:col-span-3 space-y-2">
+        <div className="md:col-span-2 space-y-2">
           <label className="text-[10px] font-bold font-mono text-on-surface-variant uppercase tracking-wider block">Sector</label>
           <select 
             value={selectedSector}
@@ -283,9 +311,20 @@ export default function ScannerView({
             onChange={(e) => setSelectedFreq(e.target.value)}
             className="w-full px-4 py-3 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium transition-all shadow-sm text-primary appearance-none"
           >
-            <option value="Any">Any</option>
-            <option value="Monthly">Monthly</option>
-            <option value="Quarterly">Quarterly</option>
+            <option value="All">All</option>
+            {assetTypeFilter === "Crypto" ? (
+              <>
+                <option value="Continuous">Continuous</option>
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+              </>
+            ) : (
+              <>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Yearly">Yearly</option>
+              </>
+            )}
           </select>
         </div>
 
@@ -336,12 +375,10 @@ export default function ScannerView({
                   >
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs tracking-wide relative ${
-                          (s.assetType || "Stock") === "Crypto" ? "bg-amber-500" :
-                          s.symbol === "O" ? "bg-primary-container" : 
-                          s.symbol === "AVGO" ? "bg-primary-container" : 
-                          s.symbol === "PEP" ? "bg-primary" : "bg-outline"
-                        }`}>
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs tracking-wide relative"
+                          style={{ backgroundColor: getAssetColor(s.symbol) }}
+                        >
                           {s.symbol}
                           <span className="absolute -bottom-1 -right-1 text-[8px] bg-primary-container text-white rounded-full w-4 h-4 flex items-center justify-center border border-white">
                             {(s.assetType || "Stock") === "Crypto" ? "🪙" : "💼"}

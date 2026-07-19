@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Stock, Transaction, Payout } from "../types";
+import { getAssetColor } from "../utils";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -304,7 +305,10 @@ export default function PortfolioView({
                 >
                   <td className="px-6 py-4.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded bg-primary text-white flex items-center justify-center font-bold text-sm tracking-wide">
+                      <div 
+                        className="w-9 h-9 rounded text-white flex items-center justify-center font-bold text-sm tracking-wide shadow-sm border border-outline-variant/10"
+                        style={{ backgroundColor: getAssetColor(p.ticker) }}
+                      >
                         {p.ticker[0]}
                       </div>
                       <span className="font-bold text-primary group-hover:text-secondary transition-colors">{p.ticker}</span>
