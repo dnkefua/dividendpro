@@ -7,13 +7,13 @@ import {
 } from "./data";
 import { db } from "./firebase";
 import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { Stock, Transaction, Payout, UserSettings } from "./types";
+import { Stock, Transaction, Payout, UserSettings, SavedStrategy } from "./types";
 import PortfolioView from "./components/PortfolioView";
 import ScannerView from "./components/ScannerView";
 import AnalysisView from "./components/AnalysisView";
 import Top10View from "./components/Top10View";
 import ProfileView from "./components/ProfileView";
-import BacktestView from "./components/BacktestView";
+import StudioView from "./components/StudioView";
 import { 
   TrendingUp, 
   Layers, 
@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Backtest">("Portfolio");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio">("Portfolio");
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
@@ -64,6 +64,11 @@ export default function App() {
   const [settings, setSettings] = useState<UserSettings>(() => {
     const saved = localStorage.getItem("divpro_settings");
     return saved ? JSON.parse(saved) : initialSettings;
+  });
+
+  const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>(() => {
+    const saved = localStorage.getItem("divpro_strategies");
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [watchlist, setWatchlist] = useState<string[]>(() => {
@@ -109,6 +114,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("divpro_watchlist", JSON.stringify(watchlist));
   }, [watchlist]);
+
+  useEffect(() => {
+    localStorage.setItem("divpro_strategies", JSON.stringify(savedStrategies));
+  }, [savedStrategies]);
 
   // Sync Transactions & Watchlist with Firebase Firestore
   useEffect(() => {
@@ -189,6 +198,14 @@ export default function App() {
 
   const handleUpdateSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
+  };
+
+  const handleSaveStrategy = (strategy: SavedStrategy) => {
+    setSavedStrategies(prev => [strategy, ...prev]);
+  };
+
+  const handleDeleteStrategy = (id: string) => {
+    setSavedStrategies(prev => prev.filter(s => s.id !== id));
   };
 
   const handleToggleWatchlist = async (symbol: string) => {
@@ -278,7 +295,7 @@ export default function App() {
             {[
               { id: "Portfolio", label: "Portfolio", icon: Layers },
               { id: "Scanner", label: "Scanner", icon: Search },
-              { id: "Backtest", label: "Backtest", icon: Activity },
+              { id: "Studio", label: "Studio", icon: Activity },
               { id: "Top10", label: "Top 10 List", icon: Award },
               { id: "Settings", label: "Settings", icon: Settings }
             ].map(item => {
@@ -430,10 +447,13 @@ export default function App() {
             onUpdateSettings={handleUpdateSettings}
           />
         )}
-        {activeView === "Backtest" && (
-          <BacktestView 
+        {activeView === "Studio" && (
+          <StudioView 
             stocks={stocks}
             settings={settings}
+            savedStrategies={savedStrategies}
+            onSaveStrategy={handleSaveStrategy}
+            onDeleteStrategy={handleDeleteStrategy}
           />
         )}
       </main>
@@ -443,7 +463,7 @@ export default function App() {
         {[
           { id: "Portfolio", label: "Portfolio", icon: Layers },
           { id: "Scanner", label: "Scanner", icon: Search },
-          { id: "Backtest", label: "Backtest", icon: Activity },
+          { id: "Studio", label: "Studio", icon: Activity },
           { id: "Top10", label: "Top 10", icon: Award },
           { id: "Settings", label: "Settings", icon: Settings }
         ].map(item => {

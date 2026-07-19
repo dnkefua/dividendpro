@@ -53,3 +53,14 @@ export interface UserSettings {
   portfolioBudget: number;
   currency: string;
 }
+
+export interface SavedStrategy {
+  id: string;
+  symbol: string;
+  initialCapital: number;
+  monthlyContribution: number;
+  years: number;
+  reinvestDividends: boolean;
+  dateSaved: string; // ISO format
+  projectedValue: number;
+}
