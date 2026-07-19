@@ -6,9 +6,9 @@ export function getAssetColor(symbol: string): string {
   }
   // Generate a hue between 0 and 360
   const h = hash % 360;
-  // Keep saturation high (70-90%) for vibrant colors, lightness medium (45-60%) for readability
+  // Keep saturation high (70-90%) for vibrant colors, lightness low-medium (25-40%) for readability with white text
   const s = 70 + (hash % 20);
-  const l = 45 + (hash % 15);
+  const l = 25 + (hash % 15);
   
   return `hsl(${h}, ${s}%, ${l}%)`;
 }

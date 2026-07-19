@@ -420,7 +420,7 @@ export default function ScannerView({
                           <div 
                             key={i} 
                             style={{ height: `${h}%` }}
-                            className="bg-secondary-fixed-dim rounded-xs w-full hover:bg-secondary transition-all"
+                            className="bg-secondary/40 rounded-xs w-full hover:bg-secondary transition-all"
                           ></div>
                         ))}
                       </div>

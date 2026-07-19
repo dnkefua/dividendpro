@@ -178,7 +178,7 @@ export default function PortfolioView({
                 <span className="text-[10px] text-outline mt-2 font-mono">2-4%</span>
               </div>
               <div className="w-full flex flex-col items-center group">
-                <div className="w-full bg-secondary-fixed-dim rounded-t-lg transition-all group-hover:opacity-80" style={{ height: "60%" }}></div>
+                <div className="w-full bg-secondary/40 rounded-t-lg transition-all group-hover:opacity-80" style={{ height: "60%" }}></div>
                 <span className="text-[10px] text-outline mt-2 font-mono">4-6%</span>
               </div>
               <div className="w-full flex flex-col items-center group">

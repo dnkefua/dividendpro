@@ -425,7 +425,7 @@ export default function AnalysisView({
                 <div key={i} className="flex-1 flex flex-col items-center group">
                   <div 
                     style={{ height: `${heightPct}%` }}
-                    className={`w-full rounded-t-sm transition-all group-hover:bg-secondary-fixed cursor-pointer ${
+                    className={`w-full rounded-t-sm transition-all group-hover:bg-secondary/80 cursor-pointer ${
                       i === stock.dividendGrowthHistory.length - 1 ? "bg-secondary" : "bg-surface-container-highest"
                     }`}
                     title={`Payout: $${item.payout.toFixed(2)}`}
