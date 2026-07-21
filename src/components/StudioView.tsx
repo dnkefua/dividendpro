@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { AreaSeries, ColorType, createChart } from "lightweight-charts";
 import { Stock, UserSettings, SavedStrategy } from "../types";
-import { Activity, Play, Settings, DollarSign, Calendar, Save, Plus, ArrowRight, RefreshCw, BarChart3, Bookmark } from "lucide-react";
+import { Activity, Play, Settings, DollarSign, Calendar, Save, Plus, ArrowRight, RefreshCw, BarChart3, Bookmark, Zap, TrendingUp } from "lucide-react";
 import { formatCurrency } from "../utils";
+import DayTradingLab from "./DayTradingLab";
 
 interface StudioViewProps {
   stocks: Stock[];
@@ -13,6 +14,7 @@ interface StudioViewProps {
 }
 
 export default function StudioView({ stocks, settings, savedStrategies, onSaveStrategy, onDeleteStrategy }: StudioViewProps) {
+  const [studioTab, setStudioTab] = useState<"longterm" | "daytrading">("daytrading");
   const [selectedSymbol, setSelectedSymbol] = useState(stocks[0]?.symbol || "");
   const [initialCapital, setInitialCapital] = useState<number>(settings.portfolioBudget);
   const [monthlyContribution, setMonthlyContribution] = useState<number>(500);
@@ -117,18 +119,55 @@ export default function StudioView({ stocks, settings, savedStrategies, onSaveSt
 
   return (
     <div className="space-y-8 animate-fade-in pb-16">
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-primary flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-secondary" />
-            Strategy Studio
-          </h2>
-          <p className="text-sm text-on-surface-variant mt-2 max-w-2xl">
-            Investigate stocks, backtest dividend strategies, and save projections to track how they perform over time.
-          </p>
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-extrabold text-primary flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-secondary" />
+              Strategy Studio
+            </h2>
+            <p className="text-sm text-on-surface-variant mt-2 max-w-2xl">
+              {studioTab === "longterm"
+                ? "Investigate stocks, backtest dividend strategies, and save projections to track how they perform over time."
+                : "Pull live market data, run day-trading strategies on stocks, options & crypto, and simulate P&L."}
+            </p>
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={() => setStudioTab("longterm")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+              studioTab === "longterm"
+                ? "bg-primary text-white border-primary shadow-sm"
+                : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-white"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Long-Term Projections
+          </button>
+          <button
+            onClick={() => setStudioTab("daytrading")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+              studioTab === "daytrading"
+                ? "bg-secondary text-white border-secondary shadow-sm"
+                : "border-outline-variant text-on-surface-variant hover:border-secondary hover:text-secondary bg-white"
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            Day Trading Lab
+          </button>
         </div>
       </div>
 
+      {/* Day Trading Tab */}
+      {studioTab === "daytrading" && (
+        <DayTradingLab currency={settings.currency} />
+      )}
+
+      {/* Long-Term Projections Tab */}
+      {studioTab === "longterm" && (
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* Configuration Panel */}
@@ -323,6 +362,7 @@ export default function StudioView({ stocks, settings, savedStrategies, onSaveSt
         </div>
 
       </div>
+      )}
     </div>
   );
 }

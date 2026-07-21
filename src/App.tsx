@@ -28,11 +28,13 @@ import {
   Check, 
   User, 
   Activity,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from "lucide-react";
+import VibeTradingView from "./components/VibeTradingView";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio">("Portfolio");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe">("Portfolio");
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
@@ -296,6 +298,7 @@ export default function App() {
               { id: "Portfolio", label: "Portfolio", icon: Layers },
               { id: "Scanner", label: "Scanner", icon: Search },
               { id: "Studio", label: "Studio", icon: Activity },
+              { id: "Vibe", label: "Vibe Trading", icon: Sparkles },
               { id: "Top10", label: "Top 10 List", icon: Award },
               { id: "Settings", label: "Settings", icon: Settings }
             ].map(item => {
@@ -456,6 +459,13 @@ export default function App() {
             onDeleteStrategy={handleDeleteStrategy}
           />
         )}
+        {activeView === "Vibe" && (
+          <VibeTradingView 
+            stocks={stocks}
+            transactions={transactions}
+            settings={settings}
+          />
+        )}
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
@@ -464,6 +474,7 @@ export default function App() {
           { id: "Portfolio", label: "Portfolio", icon: Layers },
           { id: "Scanner", label: "Scanner", icon: Search },
           { id: "Studio", label: "Studio", icon: Activity },
+          { id: "Vibe", label: "Vibe", icon: Sparkles },
           { id: "Top10", label: "Top 10", icon: Award },
           { id: "Settings", label: "Settings", icon: Settings }
         ].map(item => {

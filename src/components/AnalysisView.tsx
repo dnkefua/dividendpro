@@ -55,6 +55,8 @@ export default function AnalysisView({
   const totalCost = buyShares * stock.price;
 
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
+  // Keep a stable ref to the active WebSocket so we can close it before creating a new one
+  const wsRef = React.useRef<WebSocket | null>(null);
 
   const [overlayActive, setOverlayActive] = useState(false);
 
@@ -101,26 +103,45 @@ export default function AnalysisView({
     newSeries.setData(dataPoints);
     chart.timeScale().fitContent();
 
-    // Secure WebSocket Connection for Real-Time Ticks
-    const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${wsProto}//${window.location.host}/ws/marketdata`);
-    
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ action: "subscribe", symbol: stock.symbol }));
-    };
+    // Real-Time WebSocket ticks — only available when local dev server is running.
+    // On Firebase (HTTPS) there is no WebSocket backend, so we skip the connection
+    // entirely to prevent the MaxListenersExceededWarning.
+    const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "tick" && msg.symbol === stock.symbol) {
-          // Update the chart with the real-time tick
-          const today = new Date().toISOString().split('T')[0];
-          newSeries.update({ time: today, value: msg.price });
+    // Close any previous socket before creating a new one
+    if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+    }
+    wsRef.current = null;
+
+    let ws: WebSocket | null = null;
+    if (isLocalDev) {
+      const wsProto = "ws:";
+      ws = new WebSocket(`${wsProto}//${window.location.host}/ws/marketdata`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        ws!.send(JSON.stringify({ action: "subscribe", symbol: stock.symbol }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "tick" && msg.symbol === stock.symbol) {
+            const today = new Date().toISOString().split('T')[0];
+            newSeries.update({ time: today, value: msg.price });
+          }
+        } catch (e) {
+          // Ignore parse errors from welcome messages
         }
-      } catch (e) {
-        // Ignore parse errors from welcome messages
-      }
-    };
+      };
+
+      ws.onerror = () => { /* silently ignore connection errors */ };
+    }
 
     let overlaySeries: any = null;
     if (overlayActive) {
@@ -145,7 +166,15 @@ export default function AnalysisView({
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      ws.close();
+      // Safely close the WebSocket and clear all handlers to prevent listener leaks
+      if (ws && ws.readyState !== WebSocket.CLOSED) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        ws.close();
+      }
+      wsRef.current = null;
       chart.remove();
     };
   }, [stock.price, stock.symbol, isCrypto, overlayActive]);

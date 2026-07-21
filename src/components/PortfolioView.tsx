@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Stock, Transaction, Payout } from "../types";
-import { getAssetColor } from "../utils";
+import { getAssetColor, formatCurrency } from "../utils";
 import { 
   DollarSign, 
   TrendingUp, 

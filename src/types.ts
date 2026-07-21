@@ -64,3 +64,66 @@ export interface SavedStrategy {
   dateSaved: string; // ISO format
   projectedValue: number;
 }
+
+// ── Day Trading Lab ───────────────────────────────────────────────────────────
+
+export type MarketType = "Stock" | "Options" | "Crypto";
+export type SignalType = "BUY" | "SELL" | "HOLD";
+export type TradeInterval = "1m" | "5m" | "15m" | "1h";
+
+export type DayStrategy =
+  | "RSI Reversal"
+  | "VWAP Scalp"
+  | "EMA Crossover"
+  | "Opening Range Breakout"
+  | "RSI + MACD"
+  | "Bollinger Band Squeeze"
+  | "Momentum Scalp"
+  | "Bull Call Spread"
+  | "Bear Put Spread"
+  | "Iron Condor"
+  | "Covered Call";
+
+export interface CandleBar {
+  time: number;       // unix seconds
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface TradeSignal {
+  type: SignalType;
+  entry: number;
+  target: number;
+  stopLoss: number;
+  riskRewardRatio: number;
+  reasoning: string;
+  confidence: number; // 0-100
+}
+
+export interface StrategyResult {
+  signal: TradeSignal;
+  indicators: Record<string, number | string>;
+}
+
+export interface OptionsGreeks {
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+  impliedVol: number;
+  theoreticalPrice: number;
+}
+
+export interface DayTradePosition {
+  symbol: string;
+  strategy: DayStrategy;
+  marketType: MarketType;
+  entryPrice: number;
+  size: number;         // shares / contracts / coins
+  targetPrice: number;
+  stopLoss: number;
+  openedAt: string;     // ISO
+}
