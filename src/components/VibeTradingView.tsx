@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createChart, ColorType, LineSeries } from "lightweight-charts";
-import { Stock, Transaction, UserSettings } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import { Stock, Transaction, UserSettings, CandleBar } from "../types";
 import { 
   Sparkles, 
   TrendingUp, 
@@ -397,21 +398,66 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
     }
 
     try {
-      const response = await fetch("/api/vibe/debate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: vibePrompt, symbol: selectedSymbol })
-      });
-      if (!response.ok) throw new Error("Debate failed.");
-      const data = await response.json();
+      let data;
+      const clientKey = settings.geminiApiKey;
+      
+      if (clientKey && clientKey.trim()) {
+        // Run completely client-side using user's custom API key
+        try {
+          const ai = new GoogleGenAI({ apiKey: clientKey });
+          const response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: `You are an AI investment committee. Evaluate the following trading strategy for the asset "${selectedSymbol || "General Market"}":
+Strategy prompt: "${vibePrompt}"
+
+Provide your response in raw JSON format with the following exact keys:
+{
+  "macro": "Detailed macro analyst perspective on pros/cons of this setup",
+  "bear": "Detailed short-seller/bear perspective highlighting pitfalls, resistance, or market headwinds",
+  "risk": "Detailed risk manager perspective suggesting position sizes, stop loss distance, and risk parameters",
+  "consensus": "Summary consensus recommendation",
+  "score": 65 // an integer vibe rating from 1 to 100
+}
+Do not return any markdown formatting or extra text, just the raw JSON.`,
+          });
+          const text = response.text || "";
+          const jsonText = text.replace(/```json|```/g, "").trim();
+          data = JSON.parse(jsonText);
+        } catch (clientErr: any) {
+          console.error("Client-side Gemini call failed:", clientErr);
+          throw new Error(`Client-side Gemini call failed: ${clientErr.message || clientErr}`);
+        }
+      } else {
+        // Fallback to backend route
+        const response = await fetch("/api/vibe/debate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: vibePrompt, symbol: selectedSymbol })
+        });
+        if (!response.ok) throw new Error(`Debate endpoint returned ${response.status}`);
+        data = await response.json();
+      }
+
       setDebateResult(data);
       
       // Immediately run backtest on historical prices
       await runBacktest(selectedSymbol, vibePrompt);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to run debate. Using simulated results.");
+      setError(`Failed to run debate: ${err.message || err}. Using simulated results.`);
+
+      // Generate simulated fallback
+      const score = Math.floor(Math.random() * 40) + 50;
+      const defaultSymbol = selectedSymbol || "the asset";
+      setDebateResult({
+        macro: `The strategy of '${vibePrompt}' on ${defaultSymbol} aligns well with short-term trend dynamics. Recent order flow shows strong momentum accumulation. Recommended to run this during high-liquidity sessions only.`,
+        bear: `I see significant vulnerability here. The prompt assumes instant execution, but in reality, trading ${defaultSymbol} around these thresholds exposes us to severe slippage and front-running.`,
+        risk: `From a risk standpoint, this setup needs strict parameter constraints. Given the volatility of ${defaultSymbol}, we recommend a maximum position size of 1.5% of equity. Use an ATR-based stop-loss.`,
+        consensus: `The committee rates this strategy as MODERATE. It captures core market imbalances but requires strict risk guidelines to avoid volatility traps.`,
+        score
+      });
+      await runBacktest(selectedSymbol, vibePrompt);
     } finally {
       setIsDebating(false);
     }

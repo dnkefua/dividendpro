@@ -52,6 +52,7 @@ export interface UserSettings {
   isPro: boolean;
   portfolioBudget: number;
   currency: string;
+  geminiApiKey?: string;
 }
 
 export interface SavedStrategy {

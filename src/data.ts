@@ -1420,5 +1420,6 @@ export const initialSettings: UserSettings = {
   biometricUnlock: true,
   isPro: true,
   portfolioBudget: 10000,
-  currency: "USD"
+  currency: "USD",
+  geminiApiKey: ""
 };
