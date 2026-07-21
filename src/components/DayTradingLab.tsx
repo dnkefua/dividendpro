@@ -476,8 +476,9 @@ export default function DayTradingLab({ currency = "USD" }: Props) {
     setLoading(true);
     setError(null);
     setResult(null);
-    setCandles([]);
-    setQuote(null);
+
+    let bars: CandleBar[] = [];
+    let priceData: any = null;
 
     try {
       const range = RANGES[interval];
@@ -485,24 +486,61 @@ export default function DayTradingLab({ currency = "USD" }: Props) {
         fetch(`/api/market/candles?symbol=${sym}&interval=${interval}&range=${range}`),
         fetch(`/api/market/price?symbol=${sym}`),
       ]);
-      if (!candleRes.ok) throw new Error(`Candle fetch failed: ${candleRes.statusText}`);
-      const candleData = await candleRes.json();
-      const priceData  = priceRes.ok ? await priceRes.json() : null;
-
-      const bars: CandleBar[] = candleData.candles || [];
-      if (bars.length === 0) throw new Error("No candle data returned. Market may be closed or symbol invalid.");
-
-      setCandles(bars);
-      setSymbol(sym);
-      if (priceData) setQuote(priceData);
-
-      const res = runStrategy(strategy, bars);
-      setResult(res);
+      if (candleRes.ok) {
+        const candleData = await candleRes.json();
+        bars = candleData.candles || [];
+      }
+      if (priceRes.ok) {
+        priceData = await priceRes.json();
+      }
     } catch (e: any) {
-      setError(e.message || "Failed to pull data.");
-    } finally {
-      setLoading(false);
+      console.warn("Backend fetch failed, running static mock fallback:", e);
     }
+
+    // Generate high-fidelity simulated candles if backend is unreachable
+    if (bars.length === 0) {
+      const count = 100;
+      let currentPrice = sym.includes("USD") ? 64200 : sym === "NVDA" ? 120 : sym === "TSLA" ? 220 : 150;
+      const nowSec = Math.floor(Date.now() / 1000);
+      const candleDuration = interval === "1m" ? 60 : interval === "5m" ? 300 : interval === "15m" ? 900 : 3600;
+
+      for (let i = count; i > 0; i--) {
+        const time = nowSec - i * candleDuration;
+        const open = currentPrice;
+        const changeVal = (Math.random() - 0.49) * (currentPrice * 0.012);
+        const close = open + changeVal;
+        const high = Math.max(open, close) + Math.random() * (currentPrice * 0.005);
+        const low = Math.min(open, close) - Math.random() * (currentPrice * 0.005);
+        const volume = Math.floor(Math.random() * 800000) + 50000;
+        
+        bars.push({ time, open, high, low, close, volume });
+        currentPrice = close;
+      }
+
+      priceData = {
+        symbol: sym,
+        name: `${sym} (Simulated)`,
+        price: currentPrice,
+        change: currentPrice * 0.0155,
+        changePct: 1.55,
+        open: currentPrice * 0.99,
+        high: currentPrice * 1.02,
+        low: currentPrice * 0.985,
+        volume: 4500000,
+        prevClose: currentPrice / 1.0155,
+        exchange: "STATIC SIMULATION"
+      };
+
+      setError("Live data server is currently offline. Viewing simulated market data.");
+    }
+
+    setCandles(bars);
+    setSymbol(sym);
+    if (priceData) setQuote(priceData);
+
+    const res = runStrategy(strategy, bars);
+    setResult(res);
+    setLoading(false);
   }, [symbolInput, interval, strategy]);
 
   // ── P&L Calculations ──────────────────────────────────────────────────────

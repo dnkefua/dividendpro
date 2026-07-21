@@ -96,10 +96,41 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
       // 1. Fetch historical 1-hour candles (1-month range) for backtesting
       const range = "1mo";
       const interval = "1h";
-      const response = await fetch(`/api/market/candles?symbol=${sym}&interval=${interval}&range=${range}`);
-      if (!response.ok) throw new Error("Failed to fetch backtest candle data.");
-      const candleData = await response.json();
-      const candles = candleData.candles || [];
+      let candles: CandleBar[] = [];
+
+      try {
+        const response = await fetch(`/api/market/candles?symbol=${sym}&interval=${interval}&range=${range}`);
+        if (response.ok) {
+          const candleData = await response.json();
+          candles = candleData.candles || [];
+        }
+      } catch (e) {
+        console.warn("Backend candles fetch failed for Vibe backtest, running static mock fallback:", e);
+      }
+
+      // Generate simulated candles if backend is offline/unreachable
+      if (candles.length === 0) {
+        const count = 120;
+        let currentPrice = sym.includes("USD") ? 64200 : sym === "NVDA" ? 120 : sym === "TSLA" ? 220 : 150;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const candleDuration = 3600; // 1 hour candles
+
+        for (let i = count; i > 0; i--) {
+          const time = nowSec - i * candleDuration;
+          const open = currentPrice;
+          const changeVal = (Math.random() - 0.495) * (currentPrice * 0.015);
+          const close = open + changeVal;
+          const high = Math.max(open, close) + Math.random() * (currentPrice * 0.006);
+          const low = Math.min(open, close) - Math.random() * (currentPrice * 0.006);
+          const volume = Math.floor(Math.random() * 600000) + 40000;
+          
+          candles.push({ time, open, high, low, close, volume });
+          currentPrice = close;
+        }
+
+        setError("Live data server is currently offline. Backtesting using simulated data.");
+      }
+
       if (candles.length < 50) {
         throw new Error("Insufficient historical candle data to run backtest. Try another asset.");
       }
