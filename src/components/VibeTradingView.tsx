@@ -109,7 +109,35 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
         console.warn("Backend candles fetch failed for Vibe backtest, running static mock fallback:", e);
       }
 
-      // Generate simulated candles if backend is offline/unreachable
+      // Binance live data fallback for cryptocurrencies if backend fails/is offline
+      const upperSym = sym.toUpperCase();
+      const isCrypto = upperSym.includes("USD") || upperSym.includes("USDT") || ["BTC", "ETH", "SOL", "DOT", "AVAX", "ADA", "LINK", "UNI", "AAVE", "MKR", "NEAR", "FIL"].includes(upperSym);
+      if (candles.length === 0 && isCrypto) {
+        try {
+          let binanceSymbol = upperSym.replace("-USD", "").replace("/", "");
+          if (!binanceSymbol.endsWith("USDT") && !binanceSymbol.endsWith("USD")) {
+            binanceSymbol += "USDT";
+          } else if (binanceSymbol.endsWith("USD")) {
+            binanceSymbol = binanceSymbol.replace("USD", "USDT");
+          }
+          const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=1h&limit=120`);
+          if (response.ok) {
+            const rawCandles = await response.json();
+            candles = rawCandles.map((c: any) => ({
+              time: Math.floor(c[0] / 1000),
+              open: parseFloat(c[1]),
+              high: parseFloat(c[2]),
+              low: parseFloat(c[3]),
+              close: parseFloat(c[4]),
+              volume: parseFloat(c[5])
+            }));
+          }
+        } catch (binanceErr) {
+          console.warn("Binance client-side candles fallback failed:", binanceErr);
+        }
+      }
+
+      // Generate simulated candles if backend is offline/unreachable and not crypto
       if (candles.length === 0) {
         const count = 120;
         let currentPrice = sym.includes("USD") ? 64200 : sym === "NVDA" ? 120 : sym === "TSLA" ? 220 : 150;

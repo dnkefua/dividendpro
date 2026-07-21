@@ -497,6 +497,62 @@ export default function DayTradingLab({ currency = "USD" }: Props) {
       console.warn("Backend fetch failed, running static mock fallback:", e);
     }
 
+    // Binance live data fallback for cryptocurrencies if backend fails/is offline
+    const upperSym = sym.toUpperCase();
+    const isCrypto = upperSym.includes("USD") || upperSym.includes("USDT") || ["BTC", "ETH", "SOL", "DOT", "AVAX", "ADA", "LINK", "UNI", "AAVE", "MKR", "NEAR", "FIL"].includes(upperSym);
+    if (bars.length === 0 && isCrypto) {
+      try {
+        let binanceSymbol = upperSym.replace("-USD", "").replace("/", "");
+        if (!binanceSymbol.endsWith("USDT") && !binanceSymbol.endsWith("USD")) {
+          binanceSymbol += "USDT";
+        } else if (binanceSymbol.endsWith("USD")) {
+          binanceSymbol = binanceSymbol.replace("USD", "USDT");
+        }
+        
+        const intervalMap: Record<string, string> = {
+          "1m": "1m", "5m": "5m", "15m": "15m", "1h": "1h"
+        };
+        const binanceInterval = intervalMap[interval] || "5m";
+
+        const [candleRes, priceRes] = await Promise.all([
+          fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=100`),
+          fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`)
+        ]);
+
+        if (candleRes.ok) {
+          const rawCandles = await candleRes.json();
+          bars = rawCandles.map((c: any) => ({
+            time: Math.floor(c[0] / 1000),
+            open: parseFloat(c[1]),
+            high: parseFloat(c[2]),
+            low: parseFloat(c[3]),
+            close: parseFloat(c[4]),
+            volume: parseFloat(c[5])
+          }));
+        }
+
+        if (priceRes.ok) {
+          const rawPrice = await priceRes.json();
+          const currentPrice = parseFloat(rawPrice.price);
+          priceData = {
+            symbol: sym,
+            name: `${sym} (Live via Binance)`,
+            price: currentPrice,
+            change: 0,
+            changePct: 0,
+            open: currentPrice,
+            high: currentPrice,
+            low: currentPrice,
+            volume: bars.reduce((acc, bar) => acc + bar.volume, 0),
+            prevClose: currentPrice,
+            exchange: "BINANCE"
+          };
+        }
+      } catch (binanceErr) {
+        console.warn("Binance client-side candles fallback failed:", binanceErr);
+      }
+    }
+
     // Generate high-fidelity simulated candles if backend is unreachable
     if (bars.length === 0) {
       const count = 100;
