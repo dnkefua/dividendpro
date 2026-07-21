@@ -9,9 +9,6 @@ dotenv.config();
 export default defineConfig(() => {
   return {
     base: process.env.VITE_BASE || '/',
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || ''),
-    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

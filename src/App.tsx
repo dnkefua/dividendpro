@@ -250,10 +250,10 @@ export default function App() {
     setIsSendingToChat(true);
 
     try {
-      const clientKey = (settings.geminiApiKey && settings.geminiApiKey.trim()) || process.env.GEMINI_API_KEY;
+      const clientKey = settings.geminiApiKey && settings.geminiApiKey.trim();
       let replyText = "";
 
-      if (clientKey && clientKey.trim() && !clientKey.startsWith("AIzaSyD-mock")) {
+      if (clientKey && !clientKey.startsWith("AIzaSyD-mock")) {
         // Run completely client-side using user's custom API key
         try {
           const ai = new GoogleGenAI({ apiKey: clientKey });

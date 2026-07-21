@@ -96,7 +96,7 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
         : "You are an elite, highly conservative financial analyst and dividend safety expert. You write with clinical, highly structured, objective, and authoritative financial precision.";
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: contentPrompt,
         config: {
           systemInstruction,
@@ -117,7 +117,7 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
       const ai = getAiClient();
 
       const chat = ai.chats.create({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: "You are the Lumina Finance DividendPro AI Assistant. You help users analyze high-yield stock lists, calculate hypothetical compound growth of their portfolio ($482,910.42 yielding ~5%), identify potential dividend traps, and provide intelligent forecasting based on standard financial models. Keep answers clean, structured, and professional.",
         }
@@ -144,7 +144,7 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
         try {
           const ai = getAiClient();
           const response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
+            model: "gemini-2.5-flash",
             contents: `You are an AI investment committee. Evaluate the following trading strategy for the asset "${symbol || "General Market"}":
 Strategy prompt: "${prompt}"
 
