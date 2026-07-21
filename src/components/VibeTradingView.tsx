@@ -399,9 +399,9 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
 
     try {
       let data;
-      const clientKey = settings.geminiApiKey;
+      const clientKey = (settings.geminiApiKey && settings.geminiApiKey.trim()) || process.env.GEMINI_API_KEY;
       
-      if (clientKey && clientKey.trim()) {
+      if (clientKey && clientKey.trim() && !clientKey.startsWith("AIzaSyD-mock")) {
         // Run completely client-side using user's custom API key
         try {
           const ai = new GoogleGenAI({ apiKey: clientKey });
