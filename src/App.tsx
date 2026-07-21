@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { GoogleGenAI } from "@google/genai";
 import { 
   initialStocks, 
   initialTransactions, 
@@ -249,20 +250,50 @@ export default function App() {
     setIsSendingToChat(true);
 
     try {
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setChatMessages(prev => [...prev, { sender: "bot", text: data.text }]);
+      const clientKey = (settings.geminiApiKey && settings.geminiApiKey.trim()) || process.env.GEMINI_API_KEY;
+      let replyText = "";
+
+      if (clientKey && clientKey.trim() && !clientKey.startsWith("AIzaSyD-mock")) {
+        // Run completely client-side using user's custom API key
+        try {
+          const ai = new GoogleGenAI({ apiKey: clientKey });
+          const systemInstruction = "You are the Lumina Finance DividendPro AI Assistant. You help users analyze high-yield stock lists, calculate hypothetical compound growth of their portfolio ($482,910.42 yielding ~5%), identify potential dividend traps, and provide intelligent forecasting based on standard financial models. Keep answers clean, structured, and professional.";
+          
+          const chat = ai.chats.create({
+            model: "gemini-2.5-flash",
+            config: {
+              systemInstruction
+            }
+          });
+          
+          const response = await chat.sendMessage({ message: prompt });
+          replyText = response.text || "";
+        } catch (clientErr: any) {
+          console.error("Client-side chat failed:", clientErr);
+          throw new Error(`Client-side Gemini chat failed: ${clientErr.message || clientErr}`);
+        }
       } else {
-        setChatMessages(prev => [...prev, { sender: "bot", text: `Error: ${data.error || "Failed to reach AI server. Please verify your GEMINI_API_KEY."}` }]);
+        // Fallback to backend route
+        const response = await fetch("/api/gemini/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: prompt })
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to reach AI server.");
+        }
+        const data = await response.json();
+        replyText = data.text || "";
       }
-    } catch (err) {
+
+      setChatMessages(prev => [...prev, { sender: "bot", text: replyText }]);
+    } catch (err: any) {
       console.error(err);
-      setChatMessages(prev => [...prev, { sender: "bot", text: "Connection failed. Please check that the server is online and your API key is provided in Settings > Secrets." }]);
+      setChatMessages(prev => [...prev, {
+        sender: "bot",
+        text: `Connection failed: ${err.message || err}. Please check your internet connection or verify your GEMINI_API_KEY in Settings.`
+      }]);
     } finally {
       setIsSendingToChat(false);
     }
