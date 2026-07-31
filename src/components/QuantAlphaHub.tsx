@@ -87,6 +87,42 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.0850,
       status: "PROFIT_TAKEN",
       txHash: "0x9d33a1e2bf...77aa"
+    },
+    {
+      id: "5",
+      timestamp: "06:35:40",
+      symbol: "HUMMINGBOT ARB",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0034,
+      exitPrice: 0.0035,
+      pnlUsd: 18.75,
+      pnlBnb: 0.0302,
+      status: "PROFIT_TAKEN",
+      txHash: "0x12c77a44b1...99ef"
+    },
+    {
+      id: "6",
+      timestamp: "06:39:15",
+      symbol: "MAESTRO SNIPER #2",
+      mode: "Autonomous Bot",
+      entryPrice: 0.045,
+      exitPrice: 0.0780,
+      pnlUsd: 14.50,
+      pnlBnb: 0.0233,
+      status: "PROFIT_TAKEN",
+      txHash: "0x77ee9011aa...44bb"
+    },
+    {
+      id: "7",
+      timestamp: "06:42:50",
+      symbol: "COMPOUND SNIPE #3",
+      mode: "Autonomous Bot",
+      entryPrice: 0.120,
+      exitPrice: 0.1980,
+      pnlUsd: 24.20,
+      pnlBnb: 0.0390,
+      status: "PROFIT_TAKEN",
+      txHash: "0x88bb442211...00cc"
     }
   ]);
 
