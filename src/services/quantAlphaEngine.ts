@@ -40,7 +40,9 @@ export interface AlphaTradeExecution {
   exitPrice?: number;
   pnlUsd: number;
   pnlBnb: number;
-  status: "OPEN" | "PROFIT_TAKEN" | "STOP_LOSS";
+  gasCostBnb?: number;
+  netProfitBnb?: number;
+  status: "OPEN" | "PROFIT_TAKEN" | "STOP_LOSS" | "REJECTED_GAS_FILTER";
   txHash: string;
 }
 
@@ -59,7 +61,7 @@ function calculateRSI(closes: number[], period = 14): number {
   const avgLoss = losses / period;
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
-  return Math.round(100 - (100 / (1 + rs)));
+  return 100 - 100 / (1 + rs);
 }
 
 function calculateEMA(closes: number[], period: number): number {
@@ -70,6 +72,56 @@ function calculateEMA(closes: number[], period: number): number {
     ema = closes[i] * k + ema * (1 - k);
   }
   return ema;
+}
+
+// ── Trade Execution Simulation with Zero-Gas Net Profit Filter ───────────────
+
+export function executeAlphaTrade(
+  opp: AlphaRecommendation,
+  mode: "Manual" | "Autonomous Bot",
+  executionMode: "paper" | "mainnet" = "paper"
+): AlphaTradeExecution {
+  const randomTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  const profitBnb = opp.expectedReturnBnb;
+  const profitUsd = opp.expectedReturnUsd;
+
+  // Gas Fee Calculation (0.00 BNB in Paper Mode, 0.0012 BNB in Mainnet Mode)
+  const estimatedGasBnb = executionMode === "paper" ? 0.0000 : 0.0012;
+  const netProfitBnb = profitBnb - estimatedGasBnb;
+
+  // Strict Net-Profit Gas Filter: Gross Return must exceed 1.5x Gas Cost on Mainnet
+  const satisfiesGasFilter = executionMode === "paper" || profitBnb >= (estimatedGasBnb * 1.5);
+
+  if (!satisfiesGasFilter) {
+    return {
+      id: Math.random().toString(),
+      timestamp: new Date().toLocaleTimeString(),
+      symbol: opp.symbol,
+      mode,
+      entryPrice: opp.currentPrice,
+      pnlUsd: 0,
+      pnlBnb: 0,
+      gasCostBnb: estimatedGasBnb,
+      netProfitBnb: 0,
+      status: "REJECTED_GAS_FILTER",
+      txHash: "SKIPPED_LOW_MARGIN"
+    };
+  }
+
+  return {
+    id: Math.random().toString(),
+    timestamp: new Date().toLocaleTimeString(),
+    symbol: opp.symbol,
+    mode,
+    entryPrice: opp.currentPrice,
+    exitPrice: opp.takeProfitTarget,
+    pnlUsd: profitUsd,
+    pnlBnb: netProfitBnb,
+    gasCostBnb: estimatedGasBnb,
+    netProfitBnb,
+    status: "PROFIT_TAKEN",
+    txHash: randomTx,
+  };
 }
 
 // ── Ingest & Analyze Market Data ─────────────────────────────────────────────
@@ -200,28 +252,4 @@ export async function fetchLiveAlphaRecommendations(): Promise<AlphaRecommendati
   });
 
   return recommendations;
-}
-
-// ── Trade Execution Simulation ───────────────────────────────────────────────
-
-export function executeAlphaTrade(
-  opp: AlphaRecommendation,
-  mode: "Manual" | "Autonomous Bot"
-): AlphaTradeExecution {
-  const randomTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  const profitBnb = opp.expectedReturnBnb;
-  const profitUsd = opp.expectedReturnUsd;
-
-  return {
-    id: Math.random().toString(),
-    timestamp: new Date().toLocaleTimeString(),
-    symbol: opp.symbol,
-    mode,
-    entryPrice: opp.currentPrice,
-    exitPrice: opp.takeProfitTarget,
-    pnlUsd: profitUsd,
-    pnlBnb: profitBnb,
-    status: "PROFIT_TAKEN",
-    txHash: randomTx,
-  };
 }

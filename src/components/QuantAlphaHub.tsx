@@ -83,7 +83,7 @@ export default function QuantAlphaHub() {
       timer = setInterval(() => {
         if (recommendations.length > 0) {
           const topOpp = recommendations[Math.floor(Math.random() * recommendations.length)];
-          const execution = executeAlphaTrade(topOpp, "Autonomous Bot");
+          const execution = executeAlphaTrade(topOpp, "Autonomous Bot", executionMode);
           setTotalBotProfitUsd(prev => parseFloat((prev + execution.pnlUsd).toFixed(2)));
           setTotalBotProfitBnb(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           
@@ -118,7 +118,7 @@ export default function QuantAlphaHub() {
     setExecutingId(opp.id);
     setExecutionNotice(null);
     setTimeout(() => {
-      const execution = executeAlphaTrade(opp, "Manual");
+      const execution = executeAlphaTrade(opp, "Manual", executionMode);
       setTotalBotProfitUsd(prev => parseFloat((prev + execution.pnlUsd).toFixed(2)));
       setTotalBotProfitBnb(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
       if (executionMode === "paper") {
