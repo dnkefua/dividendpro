@@ -30,8 +30,8 @@ export default function QuantAlphaHub() {
   const [walletBnbBalance, setWalletBnbBalance] = useState(0.8542);
   const [paperBnbBalance, setPaperBnbBalance] = useState(10.00);
 
-  // Autonomous Bot State
-  const [autoBotActive, setAutoBotActive] = useState(false);
+  // Autonomous Bot State - AUTO-STARTED FOR LIVE RUN
+  const [autoBotActive, setAutoBotActive] = useState(true);
   const [autoPromoteActive, setAutoPromoteActive] = useState(true);
   const [promotionAlert, setPromotionAlert] = useState<string | null>(null);
   const [totalBotProfitUsd, setTotalBotProfitUsd] = useState(148.50);
