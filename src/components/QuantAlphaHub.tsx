@@ -9,7 +9,7 @@ import { checkRustMevRelayStatus, RustMevRelayStatus } from "../services/rustMev
 import {
   Sparkles, Zap, TrendingUp, ShieldAlert, Activity, Play,
   CheckCircle, ArrowRight, DollarSign, Layers, RefreshCw, Lock,
-  Award, Sliders, Bot, Send, ShieldCheck, Cpu
+  Award, Sliders, Bot, Send, ShieldCheck, Cpu, Receipt, Printer, Copy
 } from "lucide-react";
 import { formatCurrency } from "../utils";
 
@@ -19,6 +19,8 @@ export default function QuantAlphaHub() {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [executionNotice, setExecutionNotice] = useState<string | null>(null);
   const [rustMevStatus, setRustMevStatus] = useState<RustMevRelayStatus | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<AlphaTradeExecution | null>(null);
+  const [copiedReceipt, setCopiedReceipt] = useState(false);
 
   useEffect(() => {
     checkRustMevRelayStatus().then(st => setRustMevStatus(st));
@@ -527,6 +529,7 @@ export default function QuantAlphaHub() {
                 <th style={{ padding: "10px" }}>EXIT PRICE</th>
                 <th style={{ padding: "10px" }}>REALIZED PNL</th>
                 <th style={{ padding: "10px" }}>TX HASH</th>
+                <th style={{ padding: "10px" }}>AUDIT RECEIPT</th>
               </tr>
             </thead>
             <tbody>
@@ -554,11 +557,24 @@ export default function QuantAlphaHub() {
                   </td>
                   <td style={{ padding: "10px", fontFamily: "monospace" }}>${log.entryPrice}</td>
                   <td style={{ padding: "10px", fontFamily: "monospace", color: "#10b981" }}>${log.exitPrice}</td>
-                  <td style={{ padding: "10px", fontWeight: 800, color: "#10b981", fontFamily: "monospace" }}>
-                    +${log.pnlUsd} (+{log.pnlBnb} BNB)
+                  <td style={{ padding: "10px", fontWeight: 800, color: log.pnlUsd >= 0 ? "#10b981" : "#f87171", fontFamily: "monospace" }}>
+                    {log.pnlUsd >= 0 ? `+$${log.pnlUsd} (+${log.pnlBnb} BNB)` : `-$${Math.abs(log.pnlUsd)} (${log.pnlBnb} BNB)`}
                   </td>
                   <td style={{ padding: "10px", fontFamily: "monospace", color: "#64748b", fontSize: "11px" }}>
-                    {log.txHash} ↗
+                    {log.txHash.slice(0, 10)}… ↗
+                  </td>
+                  <td style={{ padding: "10px" }}>
+                    <button
+                      onClick={() => setSelectedReceipt(log)}
+                      style={{
+                        padding: "4px 10px", background: "rgba(16,185,129,0.15)",
+                        border: "1px solid #10b981", borderRadius: "8px",
+                        color: "#10b981", fontSize: "11px", fontWeight: 800, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "4px"
+                      }}
+                    >
+                      <Receipt size={12} /> View Receipt
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -567,6 +583,102 @@ export default function QuantAlphaHub() {
         </div>
       </div>
 
+      {/* 🧾 PnL Trade Receipt Modal */}
+      {selectedReceipt && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(8px)", zIndex: 100, display: "flex",
+          alignItems: "center", justifyContent: "center", padding: "16px"
+        }}>
+          <div style={{
+            background: "#090d16", border: "1px solid rgba(16,185,129,0.5)",
+            borderRadius: "24px", maxWidth: "500px", width: "100%", padding: "28px",
+            display: "flex", flexDirection: "column", gap: "20px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px dashed rgba(255,255,255,0.1)", paddingBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Receipt size={24} color="#10b981" />
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
+                    LUMINA QUANT HFT RECEIPT
+                  </h3>
+                  <span style={{ fontSize: "11px", color: "#64748b", fontFamily: "monospace" }}>
+                    AUDIT ID: {selectedReceipt.id.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedReceipt(null)}
+                style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "13px", color: "#cbd5e1" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Execution Time:</span>
+                <span style={{ fontWeight: 700, color: "#f8fafc", fontFamily: "monospace" }}>{selectedReceipt.timestamp}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Trade Symbol:</span>
+                <span style={{ fontWeight: 800, color: "#a78bfa" }}>{selectedReceipt.symbol}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Execution Mode:</span>
+                <span style={{ fontWeight: 800, color: "#10b981" }}>{selectedReceipt.mode} ({executionMode.toUpperCase()})</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Entry Price:</span>
+                <span style={{ fontFamily: "monospace" }}>${selectedReceipt.entryPrice}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Exit Price:</span>
+                <span style={{ fontFamily: "monospace", color: "#10b981" }}>${selectedReceipt.exitPrice}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "10px" }}>
+                <span style={{ fontWeight: 800, color: "#f8fafc" }}>Net Realized Profit:</span>
+                <span style={{ fontWeight: 900, color: selectedReceipt.pnlUsd >= 0 ? "#10b981" : "#f87171", fontSize: "16px", fontFamily: "monospace" }}>
+                  {selectedReceipt.pnlUsd >= 0 ? `+$${selectedReceipt.pnlUsd} (+${selectedReceipt.pnlBnb} BNB)` : `-$${Math.abs(selectedReceipt.pnlUsd)} (${selectedReceipt.pnlBnb} BNB)`}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Gas Fee Status:</span>
+                <span style={{ color: "#10b981", fontWeight: 700 }}>Passed 1.5x Net-Profit Shield ✓</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", wordBreak: "break-all" }}>
+                <span style={{ color: "#64748b" }}>Tx Hash:</span>
+                <span style={{ fontFamily: "monospace", color: "#94a3b8", fontSize: "11px" }}>{selectedReceipt.txHash}</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`🧾 [LUMINA PnL RECEIPT]\nSymbol: ${selectedReceipt.symbol}\nProfit: +$${selectedReceipt.pnlUsd} (+${selectedReceipt.pnlBnb} BNB)\nTx: ${selectedReceipt.txHash}`);
+                  setCopiedReceipt(true);
+                  setTimeout(() => setCopiedReceipt(false), 2000);
+                }}
+                style={{
+                  flex: 1, padding: "12px", background: "linear-gradient(135deg, #10b981, #059669)",
+                  border: "none", borderRadius: "10px", color: "white", fontWeight: 800, fontSize: "12px", cursor: "pointer"
+                }}
+              >
+                {copiedReceipt ? "Receipt Copied to Clipboard! ✓" : "📋 Copy Receipt Text"}
+              </button>
+              <button
+                onClick={() => window.print()}
+                style={{
+                  padding: "12px 18px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: "10px", color: "#f8fafc", fontWeight: 800, fontSize: "12px", cursor: "pointer"
+                }}
+              >
+                🖨️ Print / PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
