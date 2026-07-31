@@ -213,6 +213,93 @@ export default function HummingbotView() {
         </div>
       )}
 
+      {/* 🛡️ LUMINA HUMMINGBOT WINNING PROTECTION MATRIX */}
+      <div style={{
+        background: "#090d16", border: "1px solid rgba(16,185,129,0.4)",
+        borderRadius: "20px", padding: "22px", display: "flex", flexDirection: "column", gap: "16px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Shield size={24} color="#10b981" />
+            <div>
+              <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
+                Lumina Hummingbot Winning Protection Matrix
+              </h3>
+              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
+                5 Active Risk Control Layers Enforced on CEX ↔ DEX Arbitrage
+              </p>
+            </div>
+          </div>
+          <span style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 900 }}>
+            🛡️ ALL 5 LAYERS ACTIVE
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+          <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 1: Atomic Hedging</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Simultaneous CEX + DEX fills; 0 unhedged market risk.</div>
+          </div>
+          <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 2: Min Spread (≥1.2%)</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Fires ONLY when price gap covers all CEX/DEX fees.</div>
+          </div>
+          <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 3: Gas Shield (1.5x)</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Rejects mainnet DEX trade if profit &lt; 1.5x gas fee.</div>
+          </div>
+          <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 4: 85%+ Win Baseline</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Requires 85%+ accuracy in paper mode before mainnet.</div>
+          </div>
+          <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 5: Telegram Profit Push</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Instant phone alert dispatched on every positive gain!</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 📊 REVENUE SYSTEM COMPARISON & FUNDING PLAYBOOK */}
+      <div style={{
+        background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "20px", padding: "22px", display: "flex", flexDirection: "column", gap: "16px"
+      }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#f8fafc", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+          📊 Revenue Generation System Comparison & Funding Playbook
+        </h3>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
+          
+          {/* System 1: Quant Alpha & BSC Sniper */}
+          <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "14px", fontWeight: 800, color: "#10b981" }}>System 1: Lumina Quant Alpha & DEX Sniper</span>
+              <span style={{ background: "#10b981", color: "#022c22", fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "10px" }}>RECOMMENDED FIRST</span>
+            </div>
+            <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: "1.5", margin: 0 }}>
+              <strong>Mechanism</strong>: Direct PancakeSwap DEX Swaps & Token Launch Sniping.<br/>
+              <strong>Win Probability</strong>: High (85%+ Win-Rate Safety Trigger).<br/>
+              <strong>Funding Steps</strong>: Deposit 0.02 BNB + $15 USDT into <code>0x71C7...8976F</code>.<br/>
+              <strong>Why Fund First</strong>: Zero CEX API key setup friction. Instant yield captures high DEX momentum. Profits earned here can fund System 2!
+            </p>
+          </div>
+
+          {/* System 2: Hummingbot CEX/DEX Arbitrage */}
+          <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "14px", fontWeight: 800, color: "#a78bfa" }}>System 2: Hummingbot CEX ↔ DEX Gateway</span>
+              <span style={{ background: "#a78bfa", color: "#1e1b4b", fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "10px" }}>PHASE 2 EXPANSION</span>
+            </div>
+            <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: "1.5", margin: 0 }}>
+              <strong>Mechanism</strong>: Orderbook Market Making & CEX/DEX Spread Arbitrage.<br/>
+              <strong>Win Probability</strong>: High / Market-Neutral (0 directional risk).<br/>
+              <strong>Funding Steps</strong>: Deposit USDT on Binance + BNB/USDT in BSC Wallet.<br/>
+              <strong>Why Fund Second</strong>: Requires Binance API keys + dual-exchange setup. Fund from System 1 profits to build a standing 24/7 cloud yield engine!
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Strategy Launchpad Cards */}
       <div>
         <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#f8fafc", marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px" }}>

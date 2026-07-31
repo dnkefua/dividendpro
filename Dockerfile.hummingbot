@@ -1,14 +1,14 @@
 # Official Hummingbot Gateway Dockerfile for Google Cloud Run
 FROM hummingbot/hummingbot:latest
 
-# Expose REST Gateway API Port
-EXPOSE 15888
+# Expose REST Gateway API Ports
 EXPOSE 8080
+EXPOSE 15888
 
 # Environment variables for Cloud Run
-ENV PORT=15888
+ENV PORT=8080
 ENV CONFIG_PASSWORD=LuminaQuantPassword2026!
 ENV ALLOW_TELEMETRY=false
 
 # Start Hummingbot Gateway REST Server
-CMD ["bin/hummingbot.py", "--gateway"]
+CMD ["python3", "bin/hummingbot.py", "--gateway"]
