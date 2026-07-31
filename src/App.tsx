@@ -32,18 +32,20 @@ import {
   AlertCircle,
   Sparkles,
   Link,
-  BarChart2
+  BarChart2,
+  Zap
 } from "lucide-react";
 import VibeTradingView from "./components/VibeTradingView";
 import BSCWalletView from "./components/BSCWalletView";
 import StrategyLabView from "./components/StrategyLabView";
+import QuantAlphaHub from "./components/QuantAlphaHub";
 import CommandPalette from "./components/CommandPalette";
 import DripSimulatorModal from "./components/DripSimulatorModal";
 import OnboardingWizard from "./components/OnboardingWizard";
 import PricingModal from "./components/PricingModal";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab">("Portfolio");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab" | "AlphaHub">("AlphaHub");
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
@@ -340,6 +342,7 @@ export default function App() {
           {/* Desktop Core Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
             {[
+              { id: "AlphaHub", label: "⚡ Quant Alpha", icon: Zap },
               { id: "Portfolio", label: "Portfolio", icon: Layers },
               { id: "Scanner", label: "Scanner", icon: Search },
               { id: "Studio", label: "Studio", icon: Activity },
@@ -477,6 +480,9 @@ export default function App() {
 
       {/* Main Body Content with Layout Constraints */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8 pb-24 md:pb-12">
+        {activeView === "AlphaHub" && (
+          <QuantAlphaHub />
+        )}
         {activeView === "Portfolio" && (
           <PortfolioView 
             stocks={stocks}
