@@ -558,21 +558,21 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
   return (
     <div className="space-y-8 animate-fade-in pb-16">
       {/* Header section */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-xs">
+      <div className="aurix-glass-card rounded-2xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold text-primary flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-secondary" />
+            <h2 className="text-2xl font-extrabold flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-emerald-400" />
               Vibe Trading Hub
             </h2>
-            <p className="text-sm text-on-surface-variant mt-2 max-w-2xl">
+            <p className="text-sm opacity-80 mt-2 max-w-2xl">
               Inspired by the HKUDS Vibe-Trading quantitative research framework. Build, debate, and backtest trading ideas using natural-language prompt models.
             </p>
           </div>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2 mt-6 border-t border-outline-variant/40 pt-4">
+        <div className="flex gap-2 mt-6 border-t border-white/10 pt-4">
           {[
             { id: "backtest", label: "Vibe Backtester & Debate", icon: Brain },
             { id: "shadow", label: "Shadow Diagnostics", icon: PieChart },
@@ -585,8 +585,8 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                 onClick={() => setActiveTab(t.id as any)}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
                   activeTab === t.id
-                    ? "bg-primary text-white border-primary shadow-sm"
-                    : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-white"
+                    ? "bg-emerald-500 text-white border-emerald-400 shadow-md"
+                    : "border-white/10 opacity-70 hover:opacity-100 hover:border-emerald-400"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -602,18 +602,18 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Inputs Column */}
-          <div className="lg:col-span-4 bg-white border border-outline-variant rounded-2xl p-5 shadow-xs h-fit space-y-4">
-            <h3 className="font-bold text-primary text-sm flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-secondary" /> Prompt Strategy Setup
+          <div className="lg:col-span-4 aurix-glass-card rounded-2xl p-5 shadow-sm h-fit space-y-4">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-emerald-400" /> Prompt Strategy Setup
             </h3>
 
             {/* Asset selector */}
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Target Asset</label>
+              <label className="text-[10px] font-bold opacity-70 uppercase tracking-wider block mb-1">Target Asset</label>
               <select
                 value={selectedSymbol}
                 onChange={e => setSelectedSymbol(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-semibold"
+                className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm font-semibold text-slate-100"
               >
                 {stocks.map(s => (
                   <option key={s.symbol} value={s.symbol}>
@@ -625,12 +625,12 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
             {/* Natural language prompt */}
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Vibe Prompt Strategy</label>
+              <label className="text-[10px] font-bold opacity-70 uppercase tracking-wider block mb-1">Vibe Prompt Strategy</label>
               <textarea
                 value={vibePrompt}
                 onChange={e => setVibePrompt(e.target.value)}
                 rows={5}
-                className="w-full px-3 py-2 bg-white border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium leading-relaxed resize-none"
+                className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm font-medium leading-relaxed resize-none text-slate-100"
                 placeholder="Describe your strategy here... (e.g. 'Buy when price drops below the 20 SMA, sell if it goes up 4%')"
               />
             </div>
@@ -639,7 +639,7 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
             <button
               onClick={triggerDebate}
               disabled={isDebating || !vibePrompt.trim()}
-              className="w-full bg-secondary text-white hover:bg-opacity-95 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-150 disabled:opacity-60"
+              className="w-full aurix-glow-btn py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-150 disabled:opacity-60"
             >
               {isDebating ? (
                 <>
@@ -660,43 +660,43 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
             
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 flex items-center gap-3 text-sm font-medium">
-                <AlertTriangle className="w-5 h-5 shrink-0" />
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-4 flex items-center gap-3 text-sm font-medium">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-red-400" />
                 {error}
               </div>
             )}
 
             {/* Live Debate swarm display */}
             {isDebating && (
-              <div className="bg-white border border-outline-variant rounded-2xl p-6 shadow-xs flex flex-col items-center justify-center py-16 space-y-4">
-                <Activity className="w-12 h-12 text-secondary animate-pulse" />
-                <p className="font-extrabold text-primary text-lg">Debating inside Swarm Investment Committee...</p>
+              <div className="aurix-glass-card rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center py-16 space-y-4">
+                <Activity className="w-12 h-12 text-emerald-400 animate-pulse" />
+                <p className="font-extrabold text-lg">Debating inside Swarm Investment Committee...</p>
                 <div className="flex gap-1.5 justify-center">
-                  <span className="w-2.5 h-2.5 bg-secondary rounded-full animate-bounce delay-100"></span>
-                  <span className="w-2.5 h-2.5 bg-secondary rounded-full animate-bounce delay-200"></span>
-                  <span className="w-2.5 h-2.5 bg-secondary rounded-full animate-bounce delay-300"></span>
+                  <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce delay-100"></span>
+                  <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce delay-200"></span>
+                  <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce delay-300"></span>
                 </div>
               </div>
             )}
 
             {/* Debate results */}
             {debateResult && !isDebating && (
-              <div className="bg-white border border-outline-variant rounded-2xl p-6 shadow-xs space-y-6">
+              <div className="aurix-glass-card rounded-2xl p-6 shadow-sm space-y-6">
                 
                 {/* Consensus Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-outline-variant/40">
+                <div className="flex items-center justify-between pb-4 border-b border-white/10">
                   <div>
-                    <h3 className="font-extrabold text-primary text-lg flex items-center gap-2">
-                      <Bot className="w-5 h-5 text-secondary" />
+                    <h3 className="font-extrabold text-lg flex items-center gap-2">
+                      <Bot className="w-5 h-5 text-emerald-400" />
                       Swarm Committee Evaluation
                     </h3>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Four independent specialist agents analyzed your prompt strategy</p>
+                    <p className="text-xs opacity-75 mt-0.5">Four independent specialist agents analyzed your prompt strategy</p>
                   </div>
                   
                   {/* Vibe score */}
-                  <div className="text-center bg-surface-container rounded-2xl px-4 py-2 border border-outline-variant/60">
-                    <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest font-mono">Vibe Score</p>
-                    <p className="text-2xl font-extrabold text-secondary font-mono mt-0.5">{debateResult.score}/100</p>
+                  <div className="text-center bg-slate-900/80 rounded-2xl px-4 py-2 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                    <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest font-mono">Vibe Score</p>
+                    <p className="text-2xl font-extrabold text-emerald-400 font-mono mt-0.5">{debateResult.score}/100</p>
                   </div>
                 </div>
 
@@ -707,21 +707,24 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                       role: "macro",
                       name: "Macro Strategist",
                       avatar: "🌐",
-                      color: "border-blue-200 bg-blue-50/30 text-blue-700",
+                      color: "border-blue-500/30 bg-blue-950/40 text-blue-300",
+                      textColor: "text-blue-100",
                       message: debateResult.macro
                     },
                     {
                       role: "bear",
                       name: "Bearish Skeptic",
                       avatar: "🐻",
-                      color: "border-red-200 bg-red-50/30 text-red-700",
+                      color: "border-red-500/30 bg-red-950/40 text-red-300",
+                      textColor: "text-red-100",
                       message: debateResult.bear
                     },
                     {
                       role: "risk",
                       name: "Risk Controller",
                       avatar: "🛡️",
-                      color: "border-emerald-200 bg-emerald-50/30 text-emerald-700",
+                      color: "border-emerald-500/30 bg-emerald-950/40 text-emerald-300",
+                      textColor: "text-emerald-100",
                       message: debateResult.risk
                     }
                   ].map(agent => (
@@ -730,7 +733,7 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                         <span className="text-lg">{agent.avatar}</span>
                         <span className="font-extrabold text-xs uppercase tracking-wide">{agent.name}</span>
                       </div>
-                      <p className="text-xs text-primary leading-relaxed flex-grow mt-2 italic">
+                      <p className={`text-xs ${agent.textColor} leading-relaxed flex-grow mt-2 italic font-medium`}>
                         "{agent.message}"
                       </p>
                     </div>
@@ -738,12 +741,12 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                 </div>
 
                 {/* Overall consensus consensus */}
-                <div className="bg-surface-container-low border border-outline-variant/60 rounded-xl p-4">
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                <div className="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     Consensus Resolution
                   </p>
-                  <p className="text-xs text-primary leading-relaxed mt-2 font-medium">
+                  <p className="text-xs text-slate-100 leading-relaxed mt-2 font-medium">
                     {debateResult.consensus}
                   </p>
                 </div>
@@ -753,13 +756,13 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
             {/* Backtest Results */}
             {backtestStats && !isDebating && (
-              <div className="bg-white border border-outline-variant rounded-2xl p-6 shadow-xs space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-outline-variant/40">
-                  <h3 className="font-extrabold text-primary text-base flex items-center gap-2">
-                    <LineChart className="w-4.5 h-4.5 text-secondary" />
+              <div className="aurix-glass-card rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                  <h3 className="font-extrabold text-base flex items-center gap-2">
+                    <LineChart className="w-4.5 h-4.5 text-emerald-400" />
                     Backtest Performance Chart
                   </h3>
-                  <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-mono opacity-80 bg-slate-800 px-2 py-0.5 rounded border border-white/10">
                     1-Hour Candles • Last 30 Days
                   </span>
                 </div>
@@ -773,12 +776,12 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                     { label: "Max Drawdown", val: `-${backtestStats.maxDrawdown.toFixed(1)}%`, highlight: false, pos: false },
                     { label: "Win Rate", val: `${backtestStats.winRate.toFixed(0)}%`, highlight: false, pos: backtestStats.winRate >= 50 }
                   ].map(stat => (
-                    <div key={stat.label} className="bg-surface-container-low border border-outline-variant rounded-xl p-3 text-center">
-                      <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-wider">{stat.label}</p>
+                    <div key={stat.label} className="bg-slate-900/80 border border-white/10 rounded-xl p-3 text-center">
+                      <p className="text-[9px] font-bold opacity-75 uppercase tracking-wider">{stat.label}</p>
                       <p className={`text-base font-extrabold font-mono mt-1 ${
                         stat.highlight 
-                          ? stat.pos ? "text-emerald-600 text-lg" : "text-red-500 text-lg"
-                          : stat.label === "Max Drawdown" ? "text-red-500" : "text-primary"
+                          ? stat.pos ? "text-emerald-400 text-lg" : "text-red-400 text-lg"
+                          : stat.label === "Max Drawdown" ? "text-red-400" : ""
                       }`}>{stat.val}</p>
                     </div>
                   ))}
@@ -789,32 +792,32 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
                 {/* Trade logs */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Executed Trade Logs ({backtestStats.tradesCount})</p>
+                  <p className="text-[10px] font-bold opacity-75 uppercase tracking-wider">Executed Trade Logs ({backtestStats.tradesCount})</p>
                   {tradeLogs.length === 0 ? (
-                    <p className="text-xs text-on-surface-variant italic">No trades executed. Strategy parameters were too restrictive.</p>
+                    <p className="text-xs opacity-70 italic">No trades executed. Strategy parameters were too restrictive.</p>
                   ) : (
-                    <div className="max-h-48 overflow-y-auto border border-outline-variant rounded-xl text-xs divide-y divide-outline-variant/30">
+                    <div className="max-h-48 overflow-y-auto border border-white/10 rounded-xl text-xs divide-y divide-white/10 bg-slate-900/60">
                       {tradeLogs.map((log, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-3 hover:bg-surface/50 font-mono">
+                        <div key={idx} className="flex justify-between items-center p-3 hover:bg-white/5 font-mono">
                           <div className="flex items-center gap-3">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                               log.type.startsWith("ENTER") 
-                                ? "bg-blue-100 text-blue-800" 
+                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" 
                                 : log.type.includes("SL") 
-                                ? "bg-red-100 text-red-800" 
-                                : "bg-emerald-100 text-emerald-800"
+                                ? "bg-red-500/20 text-red-300 border border-red-500/30" 
+                                : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                             }`}>{log.type}</span>
-                            <span className="text-on-surface-variant">{log.time}</span>
+                            <span className="opacity-70">{log.time}</span>
                           </div>
                           <div className="flex gap-4">
-                            <span>Price: <span className="font-bold text-primary">${log.price.toFixed(2)}</span></span>
+                            <span>Price: <span className="font-bold">${log.price.toFixed(2)}</span></span>
                             {log.pnl !== 0 && (
-                              <span className={log.pnl >= 0 ? "text-emerald-600" : "text-red-500"}>
+                              <span className={log.pnl >= 0 ? "text-emerald-400" : "text-red-400"}>
                                 {log.pnl >= 0 ? "+" : ""}{log.pnl.toFixed(2)}%
                               </span>
                             )}
                             {log.cash > 0 && (
-                              <span className="text-on-surface-variant text-[10px]">Bal: ${log.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                              <span className="opacity-70 text-[10px]">Bal: ${log.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                             )}
                           </div>
                         </div>
@@ -828,10 +831,10 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
             {/* Empty state */}
             {!debateResult && !isDebating && !error && (
-              <div className="bg-white border border-outline-variant rounded-2xl p-20 text-center flex flex-col items-center justify-center text-on-surface-variant shadow-xs">
-                <Brain className="w-14 h-14 mb-4 text-outline" strokeWidth={1} />
-                <h4 className="font-bold text-primary mb-1 text-base">Swarm Ready</h4>
-                <p className="text-xs max-w-sm">Write a natural language strategy, select an asset, and click <span className="font-bold text-secondary">Evaluate & Debate Vibe</span> to start the swarm backtester.</p>
+              <div className="aurix-glass-card rounded-2xl p-20 text-center flex flex-col items-center justify-center opacity-80 shadow-sm">
+                <Brain className="w-14 h-14 mb-4 text-emerald-400" strokeWidth={1} />
+                <h4 className="font-bold mb-1 text-base">Swarm Ready</h4>
+                <p className="text-xs max-w-sm">Write a natural language strategy, select an asset, and click <span className="font-bold text-emerald-400">Evaluate & Debate Vibe</span> to start the swarm backtester.</p>
               </div>
             )}
 
@@ -842,10 +845,10 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
       {/* SHADOW DIAGNOSTICS VIEW */}
       {activeTab === "shadow" && (
-        <div className="bg-white border border-outline-variant rounded-2xl p-6 shadow-xs space-y-6">
-          <div className="border-b border-outline-variant/40 pb-4">
-            <h3 className="font-extrabold text-primary text-base flex items-center gap-2">
-              <PieChart className="w-5 h-5 text-secondary" />
+        <div className="aurix-glass-card rounded-2xl p-6 shadow-sm space-y-6">
+          <div className="border-b border-white/10 pb-4">
+            <h3 className="font-extrabold text-base flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-emerald-400" />
               Shadow Behavioral Diagnostics
             </h3>
             <p className="text-xs text-on-surface-variant mt-1">
@@ -940,31 +943,31 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Prebuilt list */}
-          <div className="bg-white border border-outline-variant rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="border-b border-outline-variant/40 pb-3">
-              <h3 className="font-extrabold text-primary text-sm flex items-center gap-2">
-                <Flame className="w-4 h-4 text-amber-500" />
+          <div className="aurix-glass-card rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="border-b border-white/10 pb-3">
+              <h3 className="font-extrabold text-sm flex items-center gap-2">
+                <Flame className="w-4 h-4 text-amber-400" />
                 Pre-built Alpha Models
               </h3>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">Use HKUDS pre-tested vibe alphas to jumpstart backtesting</p>
+              <p className="text-[11px] opacity-75 mt-0.5">Use HKUDS pre-tested vibe alphas to jumpstart backtesting</p>
             </div>
 
             <div className="space-y-3">
               {prebuiltAlphas.map((alpha, idx) => (
                 <div 
                   key={idx}
-                  className="bg-surface-container-low hover:bg-surface border border-outline-variant hover:border-primary rounded-xl p-4 transition-all space-y-3 group"
+                  className="bg-slate-900/80 hover:bg-slate-900 border border-white/10 hover:border-emerald-400/60 rounded-xl p-4 transition-all space-y-3 group"
                 >
                   <div className="flex justify-between items-center">
-                    <span className="font-extrabold text-xs text-primary">{alpha.title}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-primary-container text-primary rounded-md font-mono">
+                    <span className="font-extrabold text-xs text-slate-100">{alpha.title}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-md font-mono">
                       {alpha.type}
                     </span>
                   </div>
-                  <p className="text-xs text-on-surface-variant italic">
+                  <p className="text-xs text-slate-300 italic">
                     "{alpha.prompt}"
                   </p>
-                  <div className="flex justify-between items-center pt-2 border-t border-outline-variant/30 text-[10px] text-outline font-mono">
+                  <div className="flex justify-between items-center pt-2 border-t border-white/10 text-[10px] opacity-70 font-mono">
                     <span>Author: {alpha.author}</span>
                     <button 
                       onClick={() => {
@@ -972,7 +975,7 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                         setActiveTab("backtest");
                         runBacktest(selectedSymbol, alpha.prompt);
                       }}
-                      className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500 text-xs font-bold hover:text-white transition flex items-center gap-1"
+                      className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 text-xs font-bold hover:text-white transition flex items-center gap-1"
                     >
                       Run AI Backtest <ArrowRight className="w-3 h-3" />
                     </button>
@@ -983,38 +986,38 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
           </div>
 
           {/* Prompt documentation helper */}
-          <div className="bg-white border border-outline-variant rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="border-b border-outline-variant/40 pb-3">
-              <h3 className="font-extrabold text-primary text-sm flex items-center gap-2">
-                <Info className="w-4.5 h-4.5 text-secondary" />
+          <div className="aurix-glass-card rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="border-b border-white/10 pb-3">
+              <h3 className="font-extrabold text-sm flex items-center gap-2">
+                <Info className="w-4.5 h-4.5 text-emerald-400" />
                 Prompt Syntax Guide
               </h3>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">How the Vibe backtester compiles your natural language inputs</p>
+              <p className="text-[11px] opacity-75 mt-0.5">How the Vibe backtester compiles your natural language inputs</p>
             </div>
 
-            <div className="space-y-4 text-xs leading-relaxed text-primary">
+            <div className="space-y-4 text-xs leading-relaxed">
               <p>
                 The backtest simulator parses your English prompt into discrete parameters. For maximum accuracy, design your strategy around the following keywords:
               </p>
               
               <div className="space-y-2.5">
-                <div className="p-3 bg-surface rounded-xl border border-outline-variant/40">
-                  <p className="font-bold font-mono text-primary text-[11px]">EMA Crossover</p>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">Include <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">EMA</span> or <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">exponential</span> to trigger buying on moving average crossings.</p>
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-white/10">
+                  <p className="font-bold font-mono text-emerald-400 text-[11px]">EMA Crossover</p>
+                  <p className="text-[11px] opacity-80 mt-0.5">Include <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">EMA</span> or <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">exponential</span> to trigger buying on moving average crossings.</p>
                 </div>
-                <div className="p-3 bg-surface rounded-xl border border-outline-variant/40">
-                  <p className="font-bold font-mono text-primary text-[11px]">RSI / Oversold</p>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">Include <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">RSI</span> or <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">relative strength</span> to execute trades based on structural support deviations.</p>
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-white/10">
+                  <p className="font-bold font-mono text-emerald-400 text-[11px]">RSI / Oversold</p>
+                  <p className="text-[11px] opacity-80 mt-0.5">Include <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">RSI</span> or <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">relative strength</span> to execute trades based on structural support deviations.</p>
                 </div>
-                <div className="p-3 bg-surface rounded-xl border border-outline-variant/40">
-                  <p className="font-bold font-mono text-primary text-[11px]">Custom Risk limits</p>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">Specify <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">X% stop</span> and <span className="font-mono bg-surface-container font-bold px-1 py-0.5 rounded text-primary">Y% profit</span> to override default stop-loss and profit target values.</p>
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-white/10">
+                  <p className="font-bold font-mono text-emerald-400 text-[11px]">Custom Risk limits</p>
+                  <p className="text-[11px] opacity-80 mt-0.5">Specify <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">X% stop</span> and <span className="font-mono bg-white/10 font-bold px-1 py-0.5 rounded text-white">Y% profit</span> to override default stop-loss and profit target values.</p>
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 flex gap-2.5 items-start">
-                <AlertTriangle className="w-4.5 h-4.5 text-amber-700 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-950 font-medium">
+              <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl p-3 flex gap-2.5 items-start">
+                <AlertTriangle className="w-4.5 h-4.5 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-200 font-medium">
                   Note: The backtest simulator compiles natural language prompt mappings deterministically to preserve simulation integrity.
                 </p>
               </div>
