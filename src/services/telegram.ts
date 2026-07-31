@@ -15,13 +15,15 @@ export interface TelegramConfig {
 }
 
 function getConfig(): TelegramConfig | null {
-  // Priority: env vars → localStorage settings
+  // Priority: env vars → localStorage settings → hardcoded active bot defaults
   const botToken =
     (import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string) ||
-    localStorage.getItem("divpro_tg_token") || "";
+    localStorage.getItem("divpro_tg_token") ||
+    "8911591416:AAF9wdmJ9ppjLZZEe-4xY_cxdqURj-r6t_o";
   const chatId =
     (import.meta.env.VITE_TELEGRAM_CHAT_ID as string) ||
-    localStorage.getItem("divpro_tg_chat_id") || "";
+    localStorage.getItem("divpro_tg_chat_id") ||
+    "6044637051";
   if (!botToken || !chatId) return null;
   return { botToken, chatId };
 }
@@ -33,12 +35,12 @@ export function saveTelegramConfig(botToken: string, chatId: string): void {
 
 export function getStoredChatId(): string {
   return (import.meta.env.VITE_TELEGRAM_CHAT_ID as string) ||
-    localStorage.getItem("divpro_tg_chat_id") || "";
+    localStorage.getItem("divpro_tg_chat_id") || "6044637051";
 }
 
 export function getStoredToken(): string {
   return (import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string) ||
-    localStorage.getItem("divpro_tg_token") || "";
+    localStorage.getItem("divpro_tg_token") || "8911591416:AAF9wdmJ9ppjLZZEe-4xY_cxdqURj-r6t_o";
 }
 
 export function hasTelegramConfig(): boolean {
