@@ -12,6 +12,7 @@ import {
   Award, Sliders, Bot, Send, ShieldCheck, Cpu, Receipt, Printer, Copy, Target, Calendar
 } from "lucide-react";
 import { formatCurrency } from "../utils";
+import { sendTelegramMessage } from "../services/telegram";
 
 export default function QuantAlphaHub() {
   const [recommendations, setRecommendations] = useState<AlphaRecommendation[]>([]);
@@ -347,6 +348,15 @@ export default function QuantAlphaHub() {
             setWalletBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           }
           
+          // Dispatch Telegram Profit Alert
+          const tgMsg = `🤖 <b>AUTONOMOUS BOT TRADE EXECUTED</b>\n\n` +
+            `🎯 <b>Symbol:</b> ${execution.symbol}\n` +
+            `⚡ <b>Mode:</b> ${executionMode === "paper" ? "Paper Simulation" : "LIVE BSC MAINNET"}\n` +
+            `💵 <b>Realized Net Profit:</b> +$${execution.pnlUsd} USD (+${execution.pnlBnb} BNB)\n` +
+            `🔒 <b>Gas Shield:</b> Passed 1.5x ✓\n\n` +
+            `<i>Daily Yield Goal Progress: +$${(totalBotProfitUsd + execution.pnlUsd).toFixed(2)} / $10,000 USDT</i> 🚀💰`;
+          sendTelegramMessage(tgMsg);
+
           setTradeLogs(prev => {
             const nextLogs = [execution, ...prev];
             const total = nextLogs.length;
@@ -366,7 +376,7 @@ export default function QuantAlphaHub() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [autoBotActive, recommendations, executionMode, autoPromoteActive]);
+  }, [autoBotActive, recommendations, executionMode, autoPromoteActive, totalBotProfitUsd]);
 
   const handleManualExecute = (opp: AlphaRecommendation) => {
     setExecutingId(opp.id);
@@ -382,6 +392,15 @@ export default function QuantAlphaHub() {
       setExecutingId(null);
       const modeLabel = executionMode === "paper" ? "[PAPER SIMULATION]" : "[LIVE MAINNET]";
       setExecutionNotice(`Successfully executed ${modeLabel} trade on ${opp.symbol}! Net profit secured: +$${execution.pnlUsd} (+${execution.pnlBnb} BNB).`);
+      
+      // Dispatch Instant Telegram Alert
+      const tgMsg = `⚡ <b>MANUAL 1-CLICK SWAP EXECUTED</b>\n\n` +
+        `🎯 <b>Symbol:</b> ${execution.symbol}\n` +
+        `⚙️ <b>Mode:</b> ${modeLabel}\n` +
+        `💵 <b>Realized Net Profit:</b> +$${execution.pnlUsd} USD (+${execution.pnlBnb} BNB)\n` +
+        `🔒 <b>Gas Shield:</b> Passed 1.5x ✓\n\n` +
+        `<i>Daily Yield Goal Progress: +$${(totalBotProfitUsd + execution.pnlUsd).toFixed(2)} / $10,000 USDT</i> 🚀💰`;
+      sendTelegramMessage(tgMsg);
     }, 1200);
   };
 
