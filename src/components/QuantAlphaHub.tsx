@@ -721,6 +721,41 @@ export default function QuantAlphaHub() {
                   </div>
                 </div>
 
+                {/* Est. Potential Profit & Auto-Bot Execution Status */}
+                {(() => {
+                  const estProfitUsd = ((267 * 0.25) * (opp.takeProfitPct / 100)).toFixed(2);
+                  const estProfitBnb = (parseFloat(estProfitUsd) / 620).toFixed(4);
+                  const isBotExecuted = tradeLogs.some(t => t.symbol.includes(opp.symbol.split('/')[0]));
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+                      <div style={{
+                        background: "rgba(16,185,129,0.15)", border: "1px solid #10b981",
+                        borderRadius: "10px", padding: "10px 12px", display: "flex",
+                        justify: "space-between", alignItems: "center"
+                      }}>
+                        <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 700 }}>Est. Potential Profit</span>
+                        <span style={{ fontSize: "13px", fontWeight: 900, color: "#10b981", fontFamily: "monospace" }}>
+                          +${estProfitUsd} USD (+{estProfitBnb} BNB)
+                        </span>
+                      </div>
+
+                      <div style={{
+                        background: isBotExecuted ? "rgba(16,185,129,0.2)" : "rgba(124,58,237,0.15)",
+                        border: `1px solid ${isBotExecuted ? "#10b981" : "#a78bfa"}`,
+                        borderRadius: "8px", padding: "6px 10px", fontSize: "11px", fontWeight: 800,
+                        color: isBotExecuted ? "#10b981" : "#a78bfa", display: "flex", alignItems: "center", gap: "6px"
+                      }}>
+                        {isBotExecuted ? (
+                          <><span>🟢 AUTO-BOT EXECUTED & SECURED</span> — Profit added to wallet!</>
+                        ) : (
+                          <><span>⚡ READY FOR 1-CLICK SWAP</span> — Click to execute manually now</>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* AI Swarm Reasoning */}
                 <div style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.06)", padding: "12px", borderRadius: "12px", fontSize: "12px", color: "#94a3b8", marginBottom: "14px" }}>
                   <div style={{ color: "#a78bfa", fontWeight: 700, fontSize: "11px", marginBottom: "4px" }}>
