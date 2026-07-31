@@ -357,7 +357,7 @@ export default function QuantAlphaHub() {
           </div>
         </div>
 
-        {/* 🎯 10 BNB DAILY GOAL ANIMATED PROGRESS BAR */}
+        {/* 🎯 $10,000 USDT DAILY GOAL ANIMATED PROGRESS BAR */}
         <div style={{
           background: "#090d16", border: "1px solid rgba(16,185,129,0.4)",
           borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "12px"
@@ -366,11 +366,11 @@ export default function QuantAlphaHub() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Target size={20} color="#10b981" />
               <span style={{ fontSize: "14px", fontWeight: 900, color: "#f8fafc" }}>
-                Daily Yield Target Progress: {totalBotProfitBnb.toFixed(4)} / 10.00 BNB (~${(totalBotProfitBnb * 620).toFixed(2)} / $6,200 USD)
+                Daily Yield Target Progress: ${totalBotProfitUsd.toFixed(2)} / $10,000.00 USDT (+{totalBotProfitBnb.toFixed(4)} / 16.129 BNB)
               </span>
             </div>
             <span style={{ fontSize: "13px", fontWeight: 900, color: "#10b981", fontFamily: "monospace" }}>
-              {Math.min(100, (totalBotProfitBnb / 10 * 100)).toFixed(1)}% Daily Goal Achieved
+              {Math.min(100, (totalBotProfitUsd / 10000 * 100)).toFixed(2)}% Daily Goal Achieved
             </span>
           </div>
 
@@ -381,7 +381,7 @@ export default function QuantAlphaHub() {
             position: "relative"
           }}>
             <div style={{
-              width: `${Math.min(100, Math.max(3, (totalBotProfitBnb / 10 * 100)))}%`, height: "100%",
+              width: `${Math.min(100, Math.max(3, (totalBotProfitUsd / 10000 * 100)))}%`, height: "100%",
               background: "linear-gradient(90deg, #10b981, #34d399, #7c3aed)",
               borderRadius: "10px", transition: "width 1s cubic-bezier(0.16, 1, 0.3, 1)",
               boxShadow: "0 0 15px rgba(16,185,129,0.6)"
