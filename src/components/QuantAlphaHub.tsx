@@ -348,7 +348,7 @@ export default function QuantAlphaHub() {
             setWalletBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           }
           
-          // Dispatch Telegram Profit Alert with Txn Sequence & Daily Goal %
+          // Dispatch Telegram Profit Alert with Today's Total Profit & Daily Goal % Complete
           const currentTotalUsd = totalBotProfitUsd + execution.pnlUsd;
           const currentTotalBnb = (totalBotProfitBnb + execution.pnlBnb).toFixed(4);
           const goalPct = Math.min(100, (currentTotalUsd / 10000) * 100).toFixed(2);
@@ -359,8 +359,8 @@ export default function QuantAlphaHub() {
             `🎯 <b>Symbol:</b> ${execution.symbol}\n` +
             `⚡ <b>Mode:</b> ${executionMode === "paper" ? "Paper Simulation" : "LIVE BSC MAINNET"}\n` +
             `💵 <b>Trade Profit:</b> +$${execution.pnlUsd} USD (+${execution.pnlBnb} BNB)\n` +
-            `📊 <b>Total Net PnL:</b> +$${currentTotalUsd.toFixed(2)} USD (+${currentTotalBnb} BNB)\n` +
-            `📈 <b>Daily Goal Progress:</b> <b>${goalPct}% Achieved</b> ($${currentTotalUsd.toFixed(2)} / $10,000.00 USDT)\n` +
+            `💰 <b>TODAY'S TOTAL PROFIT:</b> <b>+$${currentTotalUsd.toFixed(2)} USD</b> (+${currentTotalBnb} BNB)\n` +
+            `📈 <b>DAILY GOAL ($10,000 USDT):</b> <b>${goalPct}% COMPLETE</b> ($${currentTotalUsd.toFixed(2)} / $10,000.00 USDT)\n` +
             `🔒 <b>Gas Shield:</b> Passed 1.5x Baseline ✓\n\n` +
             `<i>100% of gains auto-compounded into DEX pool!</i> 🚀💰`;
           sendTelegramMessage(tgMsg);
@@ -401,7 +401,7 @@ export default function QuantAlphaHub() {
       const modeLabel = executionMode === "paper" ? "[PAPER SIMULATION]" : "[LIVE MAINNET]";
       setExecutionNotice(`Successfully executed ${modeLabel} trade on ${opp.symbol}! Net profit secured: +$${execution.pnlUsd} (+${execution.pnlBnb} BNB).`);
       
-      // Dispatch Instant Telegram Alert with Txn Sequence & Daily Goal %
+      // Dispatch Instant Telegram Alert with Today's Total Profit & Daily Goal % Complete
       const currentTotalUsd = totalBotProfitUsd + execution.pnlUsd;
       const currentTotalBnb = (totalBotProfitBnb + execution.pnlBnb).toFixed(4);
       const goalPct = Math.min(100, (currentTotalUsd / 10000) * 100).toFixed(2);
@@ -412,8 +412,8 @@ export default function QuantAlphaHub() {
         `🎯 <b>Symbol:</b> ${execution.symbol}\n` +
         `⚙️ <b>Mode:</b> ${modeLabel}\n` +
         `💵 <b>Trade Profit:</b> +$${execution.pnlUsd} USD (+${execution.pnlBnb} BNB)\n` +
-        `📊 <b>Total Net PnL:</b> +$${currentTotalUsd.toFixed(2)} USD (+${currentTotalBnb} BNB)\n` +
-        `📈 <b>Daily Goal Progress:</b> <b>${goalPct}% Achieved</b> ($${currentTotalUsd.toFixed(2)} / $10,000.00 USDT)\n` +
+        `💰 <b>TODAY'S TOTAL PROFIT:</b> <b>+$${currentTotalUsd.toFixed(2)} USD</b> (+${currentTotalBnb} BNB)\n` +
+        `📈 <b>DAILY GOAL ($10,000 USDT):</b> <b>${goalPct}% COMPLETE</b> ($${currentTotalUsd.toFixed(2)} / $10,000.00 USDT)\n` +
         `🔒 <b>Gas Shield:</b> Passed 1.5x Baseline ✓\n\n` +
         `<i>100% of gains auto-compounded into DEX pool!</i> 🚀💰`;
       sendTelegramMessage(tgMsg);
