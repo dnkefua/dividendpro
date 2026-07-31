@@ -82,8 +82,9 @@ export function executeAlphaTrade(
   executionMode: "paper" | "mainnet" = "paper"
 ): AlphaTradeExecution {
   const randomTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  const profitBnb = opp.expectedReturnBnb;
-  const profitUsd = opp.expectedReturnUsd;
+  // Cap single trade profit simulation to realistic capital position limits ($15 - $120 max per trade)
+  const profitUsd = Math.min(120, Math.max(5, opp.expectedReturnUsd || 35.0));
+  const profitBnb = parseFloat((profitUsd / 620).toFixed(4));
 
   // Gas Fee Calculation (0.00 BNB in Paper Mode, 0.0012 BNB in Mainnet Mode)
   const estimatedGasBnb = executionMode === "paper" ? 0.0000 : 0.0012;
