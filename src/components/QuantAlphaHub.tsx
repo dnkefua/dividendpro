@@ -26,10 +26,11 @@ export default function QuantAlphaHub() {
     checkRustMevRelayStatus().then(st => setRustMevStatus(st));
   }, []);
 
-  // Execution Mode & Bot Wallet Balance State
+  // Execution Mode & Bot Wallet Balance State ($257 USDT Deposit Active)
   const [executionMode, setExecutionMode] = useState<"paper" | "mainnet">("paper");
-  const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("divpro_sniper_wallet_address") || "0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
-  const [walletBnbBalance, setWalletBnbBalance] = useState(0.8542);
+  const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("divpro_sniper_wallet_address") || "0x71C765E12A832109841B9200428190345718976F");
+  const [walletUsdtBalance, setWalletUsdtBalance] = useState(257.00);
+  const [walletBnbBalance, setWalletBnbBalance] = useState(0.4306);
   const [paperBnbBalance, setPaperBnbBalance] = useState(10.00);
 
   // Autonomous Bot State - AUTO-STARTED FOR LIVE RUN
