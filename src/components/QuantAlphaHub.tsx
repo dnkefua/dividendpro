@@ -123,6 +123,66 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.0390,
       status: "PROFIT_TAKEN",
       txHash: "0x88bb442211...00cc"
+    },
+    {
+      id: "8",
+      timestamp: "06:46:15",
+      symbol: "PANCAKESWAP ARB #2",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0035,
+      exitPrice: 0.0036,
+      pnlUsd: 21.15,
+      pnlBnb: 0.0341,
+      status: "PROFIT_TAKEN",
+      txHash: "0x44aa998811...55dd"
+    },
+    {
+      id: "9",
+      timestamp: "06:49:30",
+      symbol: "MAESTRO SNIPER #4",
+      mode: "Autonomous Bot",
+      entryPrice: 0.082,
+      exitPrice: 0.1410,
+      pnlUsd: 19.80,
+      pnlBnb: 0.0319,
+      status: "PROFIT_TAKEN",
+      txHash: "0x22bb553399...66ee"
+    },
+    {
+      id: "10",
+      timestamp: "06:52:45",
+      symbol: "WBNB/USDT SWAP",
+      mode: "Autonomous Bot",
+      entryPrice: 618.4,
+      exitPrice: 631.2,
+      pnlUsd: 28.50,
+      pnlBnb: 0.0460,
+      status: "PROFIT_TAKEN",
+      txHash: "0x11cc664488...77ff"
+    },
+    {
+      id: "11",
+      timestamp: "06:56:00",
+      symbol: "COMPOUND SNIPE #5",
+      mode: "Autonomous Bot",
+      entryPrice: 0.210,
+      exitPrice: 0.3420,
+      pnlUsd: 32.10,
+      pnlBnb: 0.0518,
+      status: "PROFIT_TAKEN",
+      txHash: "0x99dd221144...88aa"
+    },
+    {
+      id: "12",
+      timestamp: "06:59:15",
+      symbol: "HUMMINGBOT ARB #3",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0036,
+      exitPrice: 0.0037,
+      pnlUsd: 16.80,
+      pnlBnb: 0.0271,
+      status: "PROFIT_TAKEN",
+      txHash: "0x33aa885522...99bb"
     }
   ]);
 
