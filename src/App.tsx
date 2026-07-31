@@ -34,7 +34,9 @@ import {
   Link,
   BarChart2,
   Zap,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from "lucide-react";
 import VibeTradingView from "./components/VibeTradingView";
 import BSCWalletView from "./components/BSCWalletView";
@@ -93,6 +95,18 @@ export default function App() {
   });
 
   const [selectedStockSymbol, setSelectedStockSymbol] = useState<string>("O");
+
+  // Theme Mode State (Dark Obsidian vs Clean White)
+  const [themeMode, setThemeMode] = useState<"dark" | "light">(() => {
+    const saved = localStorage.getItem("divpro_theme_mode");
+    return (saved as "dark" | "light") || "dark";
+  });
+
+  const toggleTheme = () => {
+    const next = themeMode === "dark" ? "light" : "dark";
+    setThemeMode(next);
+    localStorage.setItem("divpro_theme_mode", next);
+  };
 
   // Notifications bell dropdown
   const [showNotifications, setShowNotifications] = useState(false);
@@ -325,7 +339,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#030712] text-slate-100 flex font-sans relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
+    <div className={`min-h-screen ${themeMode === "dark" ? "bg-[#030712] text-slate-100" : "bg-[#f8fafc] text-slate-900"} flex font-sans relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
       
       {/* Mobile Drawer Overlay */}
       {isMobileNavOpen && (
@@ -335,8 +349,10 @@ export default function App() {
         />
       )}
 
-      {/* Aurix Dark Glass Left Sidebar Navigation */}
-      <aside className={`fixed md:sticky top-0 h-screen w-64 bg-[#090d16]/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between z-50 transition-transform duration-300 ${
+      {/* Aurix Glass Left Sidebar Navigation */}
+      <aside className={`fixed md:sticky top-0 h-screen w-64 ${
+        themeMode === "dark" ? "bg-[#090d16]/95 border-white/10" : "bg-white/95 border-slate-200 shadow-xl"
+      } backdrop-blur-2xl border-r flex flex-col justify-between z-50 transition-transform duration-300 ${
         isMobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       }`}>
         <div className="p-4 space-y-6 overflow-y-auto">
@@ -456,7 +472,9 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* Minimal Clean Top Header Bar */}
-        <header className="sticky top-0 bg-[#030712]/85 backdrop-blur-xl border-b border-white/10 z-40 h-16 px-4 md:px-8 flex items-center justify-between">
+        <header className={`sticky top-0 ${
+          themeMode === "dark" ? "bg-[#030712]/85 border-white/10" : "bg-white/85 border-slate-200 shadow-xs text-slate-900"
+        } backdrop-blur-xl border-b z-40 h-16 px-4 md:px-8 flex items-center justify-between`}>
           
           <div className="flex items-center gap-3">
             <button 
@@ -474,6 +492,20 @@ export default function App() {
           {/* Right Action Icons Group */}
           <div className="flex items-center gap-3">
             
+            {/* 1-Click Theme Switcher Button */}
+            <button
+              onClick={toggleTheme}
+              className={`px-3 py-1.5 rounded-xl border font-extrabold text-xs flex items-center gap-1.5 transition-all ${
+                themeMode === "dark" 
+                  ? "bg-white/10 border-white/10 text-amber-300 hover:bg-white/20" 
+                  : "bg-slate-200 border-slate-300 text-slate-900 hover:bg-slate-300"
+              }`}
+              title="Toggle Light / Dark Theme"
+            >
+              {themeMode === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-600" />}
+              <span>{themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}</span>
+            </button>
+
             {/* Search Command Palette Trigger */}
             <button
               onClick={() => setIsCommandPaletteOpen(true)}
