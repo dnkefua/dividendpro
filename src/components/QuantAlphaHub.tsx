@@ -183,6 +183,54 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.0271,
       status: "PROFIT_TAKEN",
       txHash: "0x33aa885522...99bb"
+    },
+    {
+      id: "13",
+      timestamp: "07:02:18",
+      symbol: "PEPEBNB HIGH-CONVICTION SNIPE",
+      mode: "Autonomous Bot",
+      entryPrice: 0.00004250,
+      exitPrice: 0.00007896,
+      pnlUsd: 41.60,
+      pnlBnb: 0.0671,
+      status: "PROFIT_TAKEN",
+      txHash: "0x55ff117733...22dd"
+    },
+    {
+      id: "14",
+      timestamp: "07:04:40",
+      symbol: "BAKE/WBNB FLASH ARB",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0028,
+      exitPrice: 0.00295,
+      pnlUsd: 26.30,
+      pnlBnb: 0.0424,
+      status: "PROFIT_TAKEN",
+      txHash: "0x66aa008844...11ee"
+    },
+    {
+      id: "15",
+      timestamp: "07:06:05",
+      symbol: "COMPOUND SNIPE #6",
+      mode: "Autonomous Bot",
+      entryPrice: 0.035,
+      exitPrice: 0.0592,
+      pnlUsd: 36.50,
+      pnlBnb: 0.0589,
+      status: "PROFIT_TAKEN",
+      txHash: "0x77bb119955...22ff"
+    },
+    {
+      id: "16",
+      timestamp: "07:07:30",
+      symbol: "HUMMINGBOT TRIANGULAR ARB",
+      mode: "Autonomous Bot",
+      entryPrice: 618.9,
+      exitPrice: 624.5,
+      pnlUsd: 22.80,
+      pnlBnb: 0.0368,
+      status: "PROFIT_TAKEN",
+      txHash: "0x88cc220066...33aa"
     }
   ]);
 
