@@ -30,10 +30,11 @@ export interface HummingbotBotStatus {
   createdAt: string;
 }
 
-const DEFAULT_GATEWAY_URL = "http://localhost:15888";
+export const DEFAULT_LOCAL_GATEWAY_URL = "http://localhost:15888";
+export const CLOUD_RUN_GATEWAY_URL = "https://hummingbot-gateway-dividendpro.run.app";
 
 export async function checkHummingbotGatewayHealth(
-  url: string = DEFAULT_GATEWAY_URL
+  url: string = DEFAULT_LOCAL_GATEWAY_URL
 ): Promise<HummingbotGatewayStatus> {
   const startTime = Date.now();
   try {

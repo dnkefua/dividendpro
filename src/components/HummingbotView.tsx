@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import {
   checkHummingbotGatewayHealth,
   getMockHummingbotBots,
+  DEFAULT_LOCAL_GATEWAY_URL,
+  CLOUD_RUN_GATEWAY_URL,
   HummingbotGatewayStatus,
   HummingbotBotStatus
 } from "../services/hummingbotService";
@@ -11,7 +13,7 @@ import {
 } from "lucide-react";
 
 export default function HummingbotView() {
-  const [gatewayUrl, setGatewayUrl] = useState("http://localhost:15888");
+  const [gatewayUrl, setGatewayUrl] = useState(CLOUD_RUN_GATEWAY_URL);
   const [gatewayStatus, setGatewayStatus] = useState<HummingbotGatewayStatus | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [bots, setBots] = useState<HummingbotBotStatus[]>([]);
@@ -124,6 +126,30 @@ export default function HummingbotView() {
           }}>
             {gatewayStatus?.connected ? `🟢 CONNECTED (${gatewayStatus.latencyMs}ms)` : `⚡ GATEWAY READY (Simulated REST Endpoint)`}
           </span>
+        </div>
+
+        {/* Endpoint Preset Buttons */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => setGatewayUrl(CLOUD_RUN_GATEWAY_URL)}
+            style={{
+              padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: 800, cursor: "pointer",
+              background: gatewayUrl === CLOUD_RUN_GATEWAY_URL ? "linear-gradient(135deg, #10b981, #059669)" : "#1e293b",
+              color: gatewayUrl === CLOUD_RUN_GATEWAY_URL ? "#022c22" : "#94a3b8", border: "none"
+            }}
+          >
+            ☁️ Google Cloud Run (24/7 Cloud Host)
+          </button>
+          <button
+            onClick={() => setGatewayUrl(DEFAULT_LOCAL_GATEWAY_URL)}
+            style={{
+              padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: 800, cursor: "pointer",
+              background: gatewayUrl === DEFAULT_LOCAL_GATEWAY_URL ? "linear-gradient(135deg, #7C3AED, #4F46E5)" : "#1e293b",
+              color: gatewayUrl === DEFAULT_LOCAL_GATEWAY_URL ? "white" : "#94a3b8", border: "none"
+            }}
+          >
+            💻 Local Docker (http://localhost:15888)
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
