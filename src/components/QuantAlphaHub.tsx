@@ -40,9 +40,17 @@ export default function QuantAlphaHub() {
   const [promotionAlert, setPromotionAlert] = useState<string | null>(null);
 
   // Trade History
-  // 54 Active Audited Trade Logs History
+  // 62 Active Audited Trade Logs History
   const [tradeLogs, setTradeLogs] = useState<AlphaTradeExecution[]>([
-    { id: "54", timestamp: "08:38:15", symbol: "NVDA ARB #12", mode: "Autonomous Bot", entryPrice: 124.5, exitPrice: 136.0, pnlUsd: 92.00, pnlBnb: 0.1484, status: "PROFIT_TAKEN", txHash: "0xff88114422...99aa" },
+    { id: "62", timestamp: "09:01:20", symbol: "COMPOUND SNIPE #15", mode: "Autonomous Bot", entryPrice: 0.081, exitPrice: 0.135, pnlUsd: 41.20, pnlBnb: 0.0665, status: "PROFIT_TAKEN", txHash: "0x11ff884422...00aa" },
+    { id: "61", timestamp: "08:58:00", symbol: "PANCAKESWAP FLASH ARB #12", mode: "Autonomous Bot", entryPrice: 0.0039, exitPrice: 0.0042, pnlUsd: 34.80, pnlBnb: 0.0561, status: "PROFIT_TAKEN", txHash: "0x00ee773311...99bb" },
+    { id: "60", timestamp: "08:54:40", symbol: "MAESTRO SNIPER #15", mode: "Autonomous Bot", entryPrice: 0.045, exitPrice: 0.082, pnlUsd: 46.20, pnlBnb: 0.0745, status: "PROFIT_TAKEN", txHash: "0x99dd662200...88cc" },
+    { id: "59", timestamp: "08:51:15", symbol: "HUMMINGBOT ARB #9", mode: "Autonomous Bot", entryPrice: 624.1, exitPrice: 636.8, pnlUsd: 31.60, pnlBnb: 0.0510, status: "PROFIT_TAKEN", txHash: "0x88cc551199...77dd" },
+    { id: "58", timestamp: "08:47:50", symbol: "WBNB/USDT SWAP #9", mode: "Autonomous Bot", entryPrice: 623.8, exitPrice: 638.2, pnlUsd: 38.40, pnlBnb: 0.0619, status: "PROFIT_TAKEN", txHash: "0x77bb440088...66ee" },
+    { id: "57", timestamp: "08:44:25", symbol: "COMPOUND SNIPE #14", mode: "Autonomous Bot", entryPrice: 0.075, exitPrice: 0.128, pnlUsd: 42.10, pnlBnb: 0.0679, status: "PROFIT_TAKEN", txHash: "0x66aa339977...55ff" },
+    { id: "56", timestamp: "08:41:00", symbol: "MAESTRO HIGH-CONVICTION SNIPE #15", mode: "Autonomous Bot", entryPrice: 0.054, exitPrice: 0.098, pnlUsd: 44.80, pnlBnb: 0.0723, status: "PROFIT_TAKEN", txHash: "0x55ff228866...44aa" },
+    { id: "55", timestamp: "08:37:35", symbol: "PANCAKESWAP FLASH ARB #11", mode: "Autonomous Bot", entryPrice: 0.0038, exitPrice: 0.0041, pnlUsd: 36.50, pnlBnb: 0.0589, status: "PROFIT_TAKEN", txHash: "0x44ee117755...33bb" },
+    { id: "54", timestamp: "08:34:10", symbol: "NVDA ARB #12", mode: "Autonomous Bot", entryPrice: 124.5, exitPrice: 136.0, pnlUsd: 92.00, pnlBnb: 0.1484, status: "PROFIT_TAKEN", txHash: "0xff88114422...99aa" },
     { id: "53", timestamp: "08:34:50", symbol: "MAESTRO HIGH-CONVICTION SNIPE #14", mode: "Autonomous Bot", entryPrice: 0.051, exitPrice: 0.094, pnlUsd: 43.50, pnlBnb: 0.0701, status: "PROFIT_TAKEN", txHash: "0xee77003311...88bb" },
     { id: "52", timestamp: "08:31:25", symbol: "PANCAKESWAP FLASH ARB #10", mode: "Autonomous Bot", entryPrice: 0.0039, exitPrice: 0.0042, pnlUsd: 38.20, pnlBnb: 0.0616, status: "PROFIT_TAKEN", txHash: "0xdd66992200...77cc" },
     { id: "51", timestamp: "08:28:00", symbol: "WBNB/USDT SWAP #8", mode: "Autonomous Bot", entryPrice: 623.1, exitPrice: 637.5, pnlUsd: 41.60, pnlBnb: 0.0671, status: "PROFIT_TAKEN", txHash: "0xcc55881199...66dd" },
