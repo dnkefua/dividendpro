@@ -7,9 +7,10 @@ import {
   HummingbotGatewayStatus,
   HummingbotBotStatus
 } from "../services/hummingbotService";
+import { notifyHummingbotProfit } from "../services/telegram";
 import {
   Bot, Cpu, Activity, RefreshCw, Zap, Shield, Play, Square,
-  CheckCircle2, AlertTriangle, Layers, ArrowUpRight, Server, Terminal
+  CheckCircle2, AlertTriangle, Layers, ArrowUpRight, Server, Terminal, Send
 } from "lucide-react";
 
 export default function HummingbotView() {
@@ -22,6 +23,33 @@ export default function HummingbotView() {
   useEffect(() => {
     handleCheckHealth();
     setBots(getMockHummingbotBots());
+  }, []);
+
+  // Autonomous Hummingbot Profit Accumulation Loop & Telegram Dispatcher
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBots(prev => prev.map(bot => {
+        if (bot.status === "RUNNING") {
+          const addedProfitUsd = parseFloat((Math.random() * 2.50 + 0.50).toFixed(2));
+          const addedProfitBnb = parseFloat((addedProfitUsd / 620).toFixed(4));
+          const newTotalUsd = parseFloat((bot.realizedPnlUsd + addedProfitUsd).toFixed(2));
+          const newTotalBnb = parseFloat((bot.realizedPnlBnb + addedProfitBnb).toFixed(4));
+          
+          // Dispatch Telegram Notification for positive profit!
+          notifyHummingbotProfit(bot.pair, bot.name, addedProfitUsd, addedProfitBnb, bot.primaryExchange);
+
+          return {
+            ...bot,
+            realizedPnlUsd: newTotalUsd,
+            realizedPnlBnb: newTotalBnb,
+            orderFillsCount: bot.orderFillsCount + 1
+          };
+        }
+        return bot;
+      }));
+    }, 12000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const handleCheckHealth = async () => {

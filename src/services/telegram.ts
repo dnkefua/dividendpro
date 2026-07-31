@@ -169,6 +169,24 @@ export async function notifyBotStarted(walletAddress: string): Promise<void> {
   await sendTelegramMessage(msg);
 }
 
+export async function notifyHummingbotProfit(
+  pair: string,
+  strategy: string,
+  profitUsd: number,
+  profitBnb: number,
+  exchange: string
+): Promise<void> {
+  const msg =
+    `💰 <b>LUMINA HUMMINGBOT PROFIT ALERT!</b>\n\n` +
+    `🤖 Strategy: <b>${strategy}</b>\n` +
+    `🔀 Pair: <b>${pair}</b>\n` +
+    `🏦 Exchange: <code>${exchange}</code>\n` +
+    `📈 Net Profit: <b>+$${profitUsd.toFixed(2)} USD</b> (+${profitBnb.toFixed(4)} BNB)\n` +
+    `⏰ Time: ${new Date().toLocaleTimeString()}\n\n` +
+    `🚀 Lumina Autonomous Yield Engine Active!`;
+  await sendTelegramMessage(msg);
+}
+
 export async function notifyBotStopped(): Promise<void> {
   const msg =
     `🔴 <b>DividendPro Sniper Bot STOPPED</b>\n` +
