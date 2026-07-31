@@ -314,7 +314,7 @@ export default function ProfileView({
           <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-outline-variant/60">
               <Key className="w-5 h-5 text-secondary" />
-              <h2 className="text-lg font-bold text-primary">Gemini AI Credentials</h2>
+              <h2 className="text-lg font-bold text-primary">API Credentials</h2>
             </div>
             <div className="space-y-2">
               <label className="block text-xs font-bold text-outline uppercase tracking-wider">Gemini API Key</label>
@@ -326,7 +326,21 @@ export default function ProfileView({
                 className="w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className="text-[10px] text-on-surface-variant font-medium">
-                Used to run multi-agent debates directly from your browser. Kept safely in local storage. Get one from Google AI Studio.
+                Used to run AI analysis from your browser. Kept safely in local storage. Get one from Google AI Studio.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2 border-t border-outline-variant/40">
+              <label className="block text-xs font-bold text-outline uppercase tracking-wider">Alchemy API Key (BSC)</label>
+              <input
+                type="password"
+                placeholder="Enter your Alchemy API Key..."
+                value={(settings as typeof settings & { alchemyApiKey?: string }).alchemyApiKey || ""}
+                onChange={(e) => onUpdateSettings({ ...settings, alchemyApiKey: e.target.value } as typeof settings)}
+                className="w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-[10px] text-on-surface-variant font-medium">
+                Required for the BSC Wallet tab — token balances, TX history &amp; real-time data via Alchemy.
+                Free at <span className="font-bold text-primary">alchemy.com</span> → Create App → BNB Smart Chain.
               </p>
             </div>
           </section>

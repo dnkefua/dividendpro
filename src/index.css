@@ -5,10 +5,10 @@
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #0f172a; /* Finance Blue */
+  --color-primary: #0f172a;
   --color-primary-container: #1e293b;
   --color-on-primary: #ffffff;
-  --color-secondary: #10b981; /* Success Green */
+  --color-secondary: #10b981;
   --color-secondary-container: #d1fae5;
   --color-on-secondary-container: #065f46;
   --color-surface: #f8f9ff;
@@ -23,6 +23,33 @@
   --color-on-surface-variant: #475569;
 }
 
+:root {
+  --color-ticker-up: #10b981;
+  --color-ticker-down: #ef4444;
+  --color-glass-bg: rgba(15, 23, 42, 0.75);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom Scrollbar for financial dashboards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -32,6 +59,17 @@
   }
   .animate-slide-left {
     animation: slideLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-flash-green {
+    animation: flashGreen 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-flash-red {
+    animation: flashRed 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .glass-panel {
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-glass-border);
   }
 }
 
@@ -48,4 +86,14 @@
 @keyframes slideLeft {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+@keyframes flashGreen {
+  0% { background-color: rgba(16, 185, 129, 0.3); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashRed {
+  0% { background-color: rgba(239, 68, 68, 0.3); }
+  100% { background-color: transparent; }
 }

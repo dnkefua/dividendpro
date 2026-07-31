@@ -39,14 +39,55 @@ function getAiClient(): GoogleGenAI {
   return aiClient;
 }
 
+// --- Security & Rate Limiting Middleware ---
+const rateLimitMap = new Map<string, { count: number; startTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 60;
+
+function apiRateLimiter(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+
+  if (!record || now - record.startTime > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, startTime: now });
+    return next();
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return res.status(429).json({ error: "Too many requests. Please slow down and try again in a minute." });
+  }
+
+  record.count++;
+  next();
+}
+
+function sanitizePromptInput(str: unknown): string {
+  if (typeof str !== "string") return "";
+  return str.slice(0, 1500).replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json());
+
+  // Security Headers
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+
+  // Apply rate limiting to all /api/ endpoints
+  app.use("/api/", apiRateLimiter);
 
   // API Routes
   app.post("/api/gemini/analyze", async (req, res) => {
     try {
       const { symbol, name, sector, price, yieldVal, payoutRatio, safetyScore, whyPick, customPrompt, assetType } = req.body;
+      const cleanCustomPrompt = sanitizePromptInput(customPrompt);
 
       const ai = getAiClient();
       const isCrypto = assetType === "Crypto";

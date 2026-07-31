@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { createChart, ColorType, AreaSeries } from "lightweight-charts";
+import { createChart, ColorType, AreaSeries, LineSeries } from "lightweight-charts";
 import { Stock, Transaction, UserSettings } from "../types";
 import { getAssetColor, formatCurrency } from "../utils";
 import { 
@@ -148,7 +148,7 @@ export default function AnalysisView({
       fetch("/api/lse/macro")
         .then(res => res.json())
         .then(data => {
-          overlaySeries = chart.addLineSeries({
+          overlaySeries = chart.addSeries(LineSeries, {
             color: "#6366f1", // Indigo
             lineWidth: 2,
             priceScaleId: 'left' // Put overlay on left axis

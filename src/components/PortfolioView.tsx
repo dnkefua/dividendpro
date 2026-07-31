@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Stock, Transaction, Payout } from "../types";
+import { Stock, Transaction, Payout, UserSettings } from "../types";
 import { getAssetColor, formatCurrency } from "../utils";
 import { 
   DollarSign, 

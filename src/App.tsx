@@ -30,12 +30,20 @@ import {
   User, 
   Activity,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Link,
+  BarChart2
 } from "lucide-react";
 import VibeTradingView from "./components/VibeTradingView";
+import BSCWalletView from "./components/BSCWalletView";
+import StrategyLabView from "./components/StrategyLabView";
+import CommandPalette from "./components/CommandPalette";
+import DripSimulatorModal from "./components/DripSimulatorModal";
+import OnboardingWizard from "./components/OnboardingWizard";
+import PricingModal from "./components/PricingModal";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe">("Portfolio");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab">("Portfolio");
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
@@ -96,6 +104,12 @@ export default function App() {
   ]);
   const [currentChatInput, setCurrentChatInput] = useState("");
   const [isSendingToChat, setIsSendingToChat] = useState(false);
+
+  // New Production UX Modals
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isDripSimulatorOpen, setIsDripSimulatorOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !localStorage.getItem("divpro_onboarded"));
 
   // Sync state to localStorage
   useEffect(() => {
@@ -330,6 +344,8 @@ export default function App() {
               { id: "Scanner", label: "Scanner", icon: Search },
               { id: "Studio", label: "Studio", icon: Activity },
               { id: "Vibe", label: "Vibe Trading", icon: Sparkles },
+              { id: "BSC", label: "🔗 BSC", icon: Link },
+              { id: "StrategyLab", label: "📊 Strategy Lab", icon: BarChart2 },
               { id: "Top10", label: "Top 10 List", icon: Award },
               { id: "Settings", label: "Settings", icon: Settings }
             ].map(item => {
@@ -354,10 +370,38 @@ export default function App() {
           {/* Right Action Icons Group */}
           <div className="flex items-center gap-3">
             
+            {/* Search Command Palette Trigger */}
+            <button
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs font-medium transition"
+            >
+              <Search className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Search...</span>
+              <kbd className="px-1.5 py-0.5 bg-white rounded border border-slate-300 font-mono text-[10px] text-slate-500 shadow-xs">⌘K</kbd>
+            </button>
+
+            {/* DRIP Freedom Calculator Quick Action */}
+            <button
+              onClick={() => setIsDripSimulatorOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 font-bold text-xs border border-emerald-500/20 transition"
+              title="FIRE & DRIP Calculator"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>DRIP Calc</span>
+            </button>
+
+            {/* Upgrade Plan Tier Trigger */}
+            <button
+              onClick={() => setIsPricingOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs hover:brightness-110 shadow-xs transition"
+            >
+              <span>PRO</span>
+            </button>
+
             {/* AI Floating Trigger Quick Action */}
             <button 
               onClick={() => setIsAiDrawerOpen(true)}
-              className="bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-white p-2.5 rounded-full transition-all duration-200 shadow-sm relative group"
+              className="bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-white p-2 rounded-full transition-all duration-200 shadow-sm relative group"
               title="Lumina AI Analyst Chatbot"
             >
               <Bot className="w-5 h-5" />
@@ -497,6 +541,12 @@ export default function App() {
             settings={settings}
           />
         )}
+        {activeView === "BSC" && (
+          <BSCWalletView settings={settings} />
+        )}
+        {activeView === "StrategyLab" && (
+          <StrategyLabView />
+        )}
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
@@ -504,9 +554,8 @@ export default function App() {
         {[
           { id: "Portfolio", label: "Portfolio", icon: Layers },
           { id: "Scanner", label: "Scanner", icon: Search },
-          { id: "Studio", label: "Studio", icon: Activity },
-          { id: "Vibe", label: "Vibe", icon: Sparkles },
-          { id: "Top10", label: "Top 10", icon: Award },
+          { id: "BSC", label: "BSC", icon: Link },
+          { id: "StrategyLab", label: "Strategy", icon: BarChart2 },
           { id: "Settings", label: "Settings", icon: Settings }
         ].map(item => {
           const Icon = item.icon;
@@ -621,6 +670,40 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Production UX Modals */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectView={(view) => setActiveView(view)}
+        onOpenAiDrawer={() => setIsAiDrawerOpen(true)}
+        onOpenDripSimulator={() => setIsDripSimulatorOpen(true)}
+        onOpenPricing={() => setIsPricingOpen(true)}
+        onSelectStock={(sym) => handleSelectStock(sym)}
+      />
+
+      <DripSimulatorModal
+        isOpen={isDripSimulatorOpen}
+        onClose={() => setIsDripSimulatorOpen(false)}
+      />
+
+      <OnboardingWizard
+        isOpen={isOnboardingOpen}
+        onClose={() => {
+          localStorage.setItem("divpro_onboarded", "true");
+          setIsOnboardingOpen(false);
+        }}
+        onSelectPersona={(persona) => {
+          if (persona === "defi") setActiveView("BSC");
+          else if (persona === "trader") setActiveView("StrategyLab");
+          else setActiveView("Portfolio");
+        }}
+      />
+
+      <PricingModal
+        isOpen={isPricingOpen}
+        onClose={() => setIsPricingOpen(false)}
+      />
 
     </div>
   );

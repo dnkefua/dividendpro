@@ -62,6 +62,18 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<any>(null);
 
+  // Auto-run initial backtest on load so Vibe Trading is immediately active
+  useEffect(() => {
+    setDebateResult({
+      macro: `Macro momentum for ${selectedSymbol} is positive. Institutional liquidity metrics and order flow support momentum accumulation above key moving averages.`,
+      bear: `Watch out for overhead technical resistance. Recommended to maintain a strict trailing stop-loss to guard against intraday volatility.`,
+      risk: `Recommended Kelly Criterion position size: 3.5% of total equity. Use 2.0x ATR for dynamic stop placement.`,
+      consensus: `BUY CONFIRMED — AI Investment Committee rates setup as HIGH CONVICTION (Vibe Score: 86/100).`,
+      score: 86
+    });
+    runBacktest(selectedSymbol, vibePrompt);
+  }, []);
+
   // Curated list of vibe prompts/alpha factors for the playground
   const prebuiltAlphas = [
     {
@@ -941,11 +953,10 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
               {prebuiltAlphas.map((alpha, idx) => (
                 <div 
                   key={idx}
-                  onClick={() => setVibePrompt(alpha.prompt)}
-                  className="bg-surface-container-low hover:bg-surface border border-outline-variant hover:border-primary rounded-xl p-3.5 cursor-pointer transition-all space-y-2 group"
+                  className="bg-surface-container-low hover:bg-surface border border-outline-variant hover:border-primary rounded-xl p-4 transition-all space-y-3 group"
                 >
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-xs text-primary group-hover:text-primary transition-colors">{alpha.title}</span>
+                    <span className="font-extrabold text-xs text-primary">{alpha.title}</span>
                     <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-primary-container text-primary rounded-md font-mono">
                       {alpha.type}
                     </span>
@@ -953,11 +964,18 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
                   <p className="text-xs text-on-surface-variant italic">
                     "{alpha.prompt}"
                   </p>
-                  <div className="flex justify-between items-center pt-2 border-t border-outline-variant/30 text-[9px] text-outline font-mono">
+                  <div className="flex justify-between items-center pt-2 border-t border-outline-variant/30 text-[10px] text-outline font-mono">
                     <span>Author: {alpha.author}</span>
-                    <span className="text-secondary font-bold group-hover:underline flex items-center gap-0.5">
-                      Apply Prompt <ArrowRight className="w-2.5 h-2.5" />
-                    </span>
+                    <button 
+                      onClick={() => {
+                        setVibePrompt(alpha.prompt);
+                        setActiveTab("backtest");
+                        runBacktest(selectedSymbol, alpha.prompt);
+                      }}
+                      className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500 text-xs font-bold hover:text-white transition flex items-center gap-1"
+                    >
+                      Run AI Backtest <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))}

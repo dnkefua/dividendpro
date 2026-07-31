@@ -6,7 +6,7 @@ export interface Stock {
   yield: number; // e.g. 5.82 for 5.82%
   growth5y: number; // e.g. 4.2 for 4.2%
   payoutRatio: number; // e.g. 74.2 for 74.2%
-  frequency: "Monthly" | "Quarterly" | "Annual";
+  frequency: "Monthly" | "Quarterly" | "Annual" | "Continuous" | "Weekly";
   historySparkline: number[];
   marketCap: string; // e.g. "47.1B"
   pAffo: string; // e.g. "13.2x"
@@ -53,6 +53,7 @@ export interface UserSettings {
   portfolioBudget: number;
   currency: string;
   geminiApiKey?: string;
+  alchemyApiKey?: string;
 }
 
 export interface SavedStrategy {
@@ -127,4 +128,71 @@ export interface DayTradePosition {
   targetPrice: number;
   stopLoss: number;
   openedAt: string;     // ISO
+}
+
+// ── Binance Smart Chain (BSC) ─────────────────────────────────────────────────
+
+export interface BSCToken {
+  symbol: string;
+  name: string;
+  contract: string;
+  decimals: number;
+  balance: string;       // raw balance string from chain
+  balanceFormatted: number; // human-readable
+  usdPrice: number;
+  usdValue: number;
+  logo?: string;
+  isStablecoin: boolean;
+  change24h?: number;
+}
+
+export interface BSCWalletState {
+  isConnected: boolean;
+  isConnecting: boolean;
+  address: string | null;
+  bnbBalance: number;
+  bnbUsdValue: number;
+  tokens: BSCToken[];
+  totalUsdValue: number;
+  chainId: number | null;
+  error: string | null;
+  txHistory: BSCTransaction[];
+}
+
+export interface BSCTransaction {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  asset: string;
+  category: string;
+  timestamp: string;
+}
+
+export interface SwapParams {
+  tokenIn: string;       // contract address
+  tokenOut: string;      // contract address
+  amountIn: string;      // human-readable
+  slippagePct: number;   // e.g. 0.5 for 0.5%
+  deadlineMinutes: number;
+}
+
+export interface MaestroTokenInfo {
+  contract: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  totalSupply: string;
+  holders: number;
+  liquidity: number;     // USD
+  liquidityLocked: boolean;
+  contractVerified: boolean;
+  isHoneypot: boolean;
+  buyTax: number;        // percent
+  sellTax: number;       // percent
+  top10HoldersPct: number;
+  priceUsd: number;
+  marketCap: number;
+  volume24h: number;
+  launchTimestamp?: string;
 }
