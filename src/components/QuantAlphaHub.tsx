@@ -231,6 +231,42 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.0368,
       status: "PROFIT_TAKEN",
       txHash: "0x88cc220066...33aa"
+    },
+    {
+      id: "17",
+      timestamp: "07:18:12",
+      symbol: "PANCAKESWAP FLASH ARB #3",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0036,
+      exitPrice: 0.0038,
+      pnlUsd: 38.40,
+      pnlBnb: 0.0619,
+      status: "PROFIT_TAKEN",
+      txHash: "0x11aa559933...77bb"
+    },
+    {
+      id: "18",
+      timestamp: "07:22:45",
+      symbol: "MAESTRO HIGH-CONVICTION SNIPE #7",
+      mode: "Autonomous Bot",
+      entryPrice: 0.052,
+      exitPrice: 0.0915,
+      pnlUsd: 44.20,
+      pnlBnb: 0.0713,
+      status: "PROFIT_TAKEN",
+      txHash: "0x44bb882200...11dd"
+    },
+    {
+      id: "19",
+      timestamp: "07:27:10",
+      symbol: "WBNB/USDT SWAP #4",
+      mode: "Autonomous Bot",
+      entryPrice: 620.5,
+      exitPrice: 632.8,
+      pnlUsd: 31.80,
+      pnlBnb: 0.0513,
+      status: "PROFIT_TAKEN",
+      txHash: "0x99cc331144...88ee"
     }
   ]);
 
