@@ -274,6 +274,13 @@ export default function QuantAlphaHub() {
               {autoPromoteActive ? "🚀 Auto-Promote (85%+ Win Trigger ON)" : "⏸️ Auto-Promote OFF"}
             </button>
 
+            <span style={{
+              padding: "8px 14px", borderRadius: "8px", fontSize: "11px", fontWeight: 800,
+              background: "rgba(124,58,237,0.2)", border: "1px solid #a78bfa", color: "#a78bfa"
+            }}>
+              🔄 Profit Auto-Reinvested into Sniping (100% Compound)
+            </span>
+
             <div style={{ display: "flex", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
               <button
                 onClick={() => setExecutionMode("paper")}
