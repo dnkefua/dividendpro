@@ -24,7 +24,7 @@ export default function QuantAlphaHub() {
   const [copiedReceipt, setCopiedReceipt] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawNotice, setWithdrawNotice] = useState<string | null>(null);
-  const [withdrawAmountInput, setWithdrawAmountInput] = useState("1000");
+  const [withdrawAmountInput, setWithdrawAmountInput] = useState("10000");
   const [withdrawAddressInput, setWithdrawAddressInput] = useState("0x318B40ba66016200379953C0f5eb9eC04E819Ab1");
 
   useEffect(() => {
@@ -1101,7 +1101,7 @@ export default function QuantAlphaHub() {
                 boxShadow: "0 0 20px rgba(16,185,129,0.4)"
               }}
             >
-              🚀 Transmit $1,000.00 USDT Transfer to Target Address
+              🚀 Transmit $10,000.00 USDT Transfer to Target Address
             </button>
           </div>
         </div>
