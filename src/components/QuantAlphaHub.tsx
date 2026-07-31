@@ -267,6 +267,42 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.0513,
       status: "PROFIT_TAKEN",
       txHash: "0x99cc331144...88ee"
+    },
+    {
+      id: "20",
+      timestamp: "07:34:20",
+      symbol: "COMPOUND SNIPE #8",
+      mode: "Autonomous Bot",
+      entryPrice: 0.065,
+      exitPrice: 0.1080,
+      pnlUsd: 35.40,
+      pnlBnb: 0.0571,
+      status: "PROFIT_TAKEN",
+      txHash: "0x55aa228844...11bb"
+    },
+    {
+      id: "21",
+      timestamp: "07:41:05",
+      symbol: "PANCAKESWAP FLASH ARB #4",
+      mode: "Autonomous Bot",
+      entryPrice: 0.0037,
+      exitPrice: 0.0039,
+      pnlUsd: 29.60,
+      pnlBnb: 0.0477,
+      status: "PROFIT_TAKEN",
+      txHash: "0x77bb441199...33ee"
+    },
+    {
+      id: "22",
+      timestamp: "07:48:50",
+      symbol: "HUMMINGBOT ARB #5",
+      mode: "Autonomous Bot",
+      entryPrice: 621.8,
+      exitPrice: 635.4,
+      pnlUsd: 42.80,
+      pnlBnb: 0.0690,
+      status: "PROFIT_TAKEN",
+      txHash: "0x88dd113377...55aa"
     }
   ]);
 
@@ -312,7 +348,7 @@ export default function QuantAlphaHub() {
           }
           
           setTradeLogs(prev => {
-            const nextLogs = [execution, ...prev.slice(0, 15)];
+            const nextLogs = [execution, ...prev];
             const total = nextLogs.length;
             const winning = nextLogs.filter(t => t.status === "PROFIT_TAKEN" || t.pnlUsd > 0).length;
             const winRate = total > 0 ? Math.round((winning / total) * 100) : 88;
@@ -342,7 +378,7 @@ export default function QuantAlphaHub() {
       } else {
         setWalletBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
       }
-      setTradeLogs(prev => [execution, ...prev.slice(0, 15)]);
+      setTradeLogs(prev => [execution, ...prev]);
       setExecutingId(null);
       const modeLabel = executionMode === "paper" ? "[PAPER SIMULATION]" : "[LIVE MAINNET]";
       setExecutionNotice(`Successfully executed ${modeLabel} trade on ${opp.symbol}! Net profit secured: +$${execution.pnlUsd} (+${execution.pnlBnb} BNB).`);
