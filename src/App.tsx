@@ -33,7 +33,8 @@ import {
   Sparkles,
   Link,
   BarChart2,
-  Zap
+  Zap,
+  Menu
 } from "lucide-react";
 import VibeTradingView from "./components/VibeTradingView";
 import BSCWalletView from "./components/BSCWalletView";
@@ -317,52 +318,158 @@ export default function App() {
     }
   };
 
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
   const handleMarkNotificationsRead = () => {
     setSystemNotifications(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
   return (
-    <div className={`min-h-screen bg-[#030712] text-slate-100 flex flex-col font-sans relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
-      {/* Aurix Dark Glass Navigation Bar */}
-      <header className="sticky top-0 bg-[#030712]/80 backdrop-blur-xl border-b border-white/10 z-50 shadow-2xl" id="main-header">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+    <div className={`min-h-screen bg-[#030712] text-slate-100 flex font-sans relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
+      
+      {/* Mobile Drawer Overlay */}
+      {isMobileNavOpen && (
+        <div 
+          onClick={() => setIsMobileNavOpen(false)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden"
+        />
+      )}
+
+      {/* Aurix Dark Glass Left Sidebar Navigation */}
+      <aside className={`fixed md:sticky top-0 h-screen w-64 bg-[#090d16]/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between z-50 transition-transform duration-300 ${
+        isMobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}>
+        <div className="p-4 space-y-6 overflow-y-auto">
           
-          {/* 3D Interactive Metallic Logo Brand */}
-          <div onClick={() => setActiveView("AlphaHub")}>
-            <Lumina3DLogo size={42} showText={true} />
+          {/* Logo Brand Title */}
+          <div className="px-2 py-2 border-b border-white/10 pb-4 cursor-pointer" onClick={() => { setActiveView("AlphaHub"); setIsMobileNavOpen(false); }}>
+            <Lumina3DLogo size={38} showText={true} />
           </div>
 
-          {/* Desktop Core Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { id: "AlphaHub", label: "⚡ Quant Alpha", icon: Zap },
-              { id: "Hummingbot", label: "🤖 Hummingbot", icon: Bot },
-              { id: "Portfolio", label: "Portfolio", icon: Layers },
-              { id: "Scanner", label: "Scanner", icon: Search },
-              { id: "Studio", label: "Studio", icon: Activity },
-              { id: "Vibe", label: "Vibe Trading", icon: Sparkles },
-              { id: "BSC", label: "🔗 BSC", icon: Link },
-              { id: "StrategyLab", label: "📊 Strategy Lab", icon: BarChart2 },
-              { id: "Top10", label: "Top 10 List", icon: Award },
-              { id: "Settings", label: "Settings", icon: Settings }
-            ].map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveView(item.id as any)}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                    activeView === item.id 
-                      ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
+          {/* Group 1: ⚡ QUANT & EXECUTION */}
+          <div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚡ ALPHA & EXECUTION</div>
+            <div className="space-y-1">
+              {[
+                { id: "AlphaHub", label: "Quant Alpha Hub", icon: Zap },
+                { id: "Hummingbot", label: "Hummingbot Gateway", icon: Bot },
+                { id: "Vibe", label: "Vibe AI Swarm", icon: Sparkles },
+                { id: "StrategyLab", label: "Strategy Lab", icon: BarChart2 }
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeView === item.id 
+                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Group 2: 📈 DEFI & MARKETS */}
+          <div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">📈 DEFI & MARKETS</div>
+            <div className="space-y-1">
+              {[
+                { id: "BSC", label: "BSC Web3 Terminal", icon: Link },
+                { id: "Portfolio", label: "Portfolio Vault", icon: Layers },
+                { id: "Scanner", label: "Market Scanner", icon: Search }
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeView === item.id 
+                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Group 3: ⚙️ PLATFORM */}
+          <div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚙️ PLATFORM</div>
+            <div className="space-y-1">
+              {[
+                { id: "Studio", label: "Quant Studio", icon: Activity },
+                { id: "Top10", label: "Top 10 Rankings", icon: Award },
+                { id: "Settings", label: "Settings & Keys", icon: Settings }
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeView === item.id 
+                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Bottom User Profile Badge */}
+        <div className="p-4 border-t border-white/10 flex items-center justify-between">
+          <div 
+            onClick={() => setActiveView("Settings")}
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+          >
+            <img 
+              alt="Avatar" 
+              className="w-9 h-9 rounded-full border border-emerald-500/50 object-cover"
+              src={settings.avatarUrl}
+            />
+            <div>
+              <p className="text-xs font-bold text-slate-200">{settings.name}</p>
+              <p className="text-[10px] font-extrabold text-emerald-400">PRO MEMBER</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Body Container */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* Minimal Clean Top Header Bar */}
+        <header className="sticky top-0 bg-[#030712]/85 backdrop-blur-xl border-b border-white/10 z-40 h-16 px-4 md:px-8 flex items-center justify-between">
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)} 
+              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <span className="text-xs font-extrabold text-slate-400">
+              Lumina Finance / <strong className="text-white text-sm">{activeView}</strong>
+            </span>
+          </div>
 
           {/* Right Action Icons Group */}
           <div className="flex items-center gap-3">
@@ -370,17 +477,17 @@ export default function App() {
             {/* Search Command Palette Trigger */}
             <button
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs font-medium transition"
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-medium transition"
             >
-              <Search className="w-3.5 h-3.5 text-indigo-500" />
+              <Search className="w-3.5 h-3.5 text-indigo-400" />
               <span>Search...</span>
-              <kbd className="px-1.5 py-0.5 bg-white rounded border border-slate-300 font-mono text-[10px] text-slate-500 shadow-xs">⌘K</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 font-mono text-[10px] text-slate-400">⌘K</kbd>
             </button>
 
             {/* DRIP Freedom Calculator Quick Action */}
             <button
               onClick={() => setIsDripSimulatorOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 font-bold text-xs border border-emerald-500/20 transition"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold text-xs border border-emerald-500/20 transition"
               title="FIRE & DRIP Calculator"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -398,11 +505,11 @@ export default function App() {
             {/* AI Floating Trigger Quick Action */}
             <button 
               onClick={() => setIsAiDrawerOpen(true)}
-              className="bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-white p-2 rounded-full transition-all duration-200 shadow-sm relative group"
+              className="bg-white/10 text-slate-200 hover:bg-white/20 p-2 rounded-full transition-all duration-200 relative"
               title="Lumina AI Analyst Chatbot"
             >
               <Bot className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-secondary rounded-full animate-pulse"></span>
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></span>
             </button>
 
             {/* Notification Bell Dropdown Button */}
@@ -412,65 +519,44 @@ export default function App() {
                   setShowNotifications(!showNotifications);
                   if (!showNotifications) handleMarkNotificationsRead();
                 }}
-                className="p-2.5 rounded-full hover:bg-surface-container-low text-primary transition-all relative"
+                className="p-2.5 rounded-full hover:bg-white/10 text-slate-200 transition-all relative"
                 title="System alerts"
               >
                 <Bell className="w-5 h-5" />
                 {systemNotifications.some(n => n.unread) && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-secondary rounded-full"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full"></span>
                 )}
               </button>
 
               {/* Notification Box Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-outline-variant rounded-2xl shadow-xl z-50 p-4 animate-scale-up">
-                  <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
-                    <span className="font-bold text-primary">Recent Notifications</span>
+                <div className="absolute right-0 mt-3 w-80 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 animate-scale-up">
+                  <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-3">
+                    <span className="font-bold text-white">Recent Notifications</span>
                     <button 
                       onClick={() => setShowNotifications(false)}
-                      className="text-outline hover:text-primary text-xs font-semibold"
+                      className="text-slate-400 hover:text-white text-xs font-semibold"
                     >
                       Close
                     </button>
                   </div>
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {systemNotifications.map((notif) => (
-                      <div key={notif.id} className="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-outline transition-all">
+                      <div key={notif.id} className="p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-white/20 transition-all">
                         <div className="flex justify-between items-start gap-1">
-                          <p className="text-xs font-bold text-primary leading-tight">{notif.title}</p>
-                          {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-1"></span>}
+                          <p className="text-xs font-bold text-white leading-tight">{notif.title}</p>
+                          {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1"></span>}
                         </div>
-                        <p className="text-[10px] text-on-surface-variant leading-relaxed mt-1">{notif.desc}</p>
-                        <p className="text-[9px] text-outline font-mono mt-1">{notif.time}</p>
+                        <p className="text-[10px] text-slate-400 leading-relaxed mt-1">{notif.desc}</p>
+                        <p className="text-[9px] text-slate-500 font-mono mt-1">{notif.time}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-
-            {/* User Profile Avatar Link */}
-            <div 
-              onClick={() => setActiveView("Settings")}
-              className="flex items-center gap-2.5 cursor-pointer pl-1.5 border-l border-outline-variant hover:opacity-85 transition-opacity"
-            >
-              <div className="w-9 h-9 rounded-full overflow-hidden border border-outline-variant">
-                <img 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                  src={settings.avatarUrl}
-                />
-              </div>
-              <div className="hidden lg:block text-left">
-                <p className="text-xs font-bold text-primary leading-tight">{settings.name}</p>
-                <p className="text-[9px] text-on-surface-variant font-mono leading-none mt-0.5">PREMIUM PRO</p>
-              </div>
-            </div>
-
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Main Body Content with Layout Constraints */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8 pb-24 md:pb-12">
@@ -551,6 +637,7 @@ export default function App() {
           <StrategyLabView />
         )}
       </main>
+      </div>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
       <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant py-2 px-3 z-50 flex justify-around shadow-lg" id="mobile-nav-bar">
