@@ -97,12 +97,12 @@ export default function QuantAlphaHub() {
             const nextLogs = [execution, ...prev.slice(0, 15)];
             const total = nextLogs.length;
             const winning = nextLogs.filter(t => t.status === "PROFIT_TAKEN" || t.pnlUsd > 0).length;
-            const winRate = total > 0 ? Math.round((winning / total) * 100) : 80;
+            const winRate = total > 0 ? Math.round((winning / total) * 100) : 88;
 
-            // Auto-Promote to Mainnet Trigger
-            if (autoPromoteActive && executionMode === "paper" && total >= 3 && winRate >= 75) {
+            // Auto-Promote to Mainnet Trigger (85%+ High-Security Baseline)
+            if (autoPromoteActive && executionMode === "paper" && total >= 3 && winRate >= 85) {
               setExecutionMode("mainnet");
-              setPromotionAlert(`🚀 STRATEGY AUTO-PROMOTED TO MAINNET! Paper win-rate hit ${winRate}% (${winning}/${total} winning trades). Live Mainnet Execution & Sniping is now ACTIVE!`);
+              setPromotionAlert(`🚀 STRATEGY AUTO-PROMOTED TO MAINNET! Paper win-rate reached ${winRate}% (85%+ High-Security Baseline Met). Live Mainnet Execution & Sniping is now ACTIVE!`);
             }
             return nextLogs;
           });
@@ -232,9 +232,9 @@ export default function QuantAlphaHub() {
                 border: `1px solid ${autoPromoteActive ? "#10b981" : "rgba(255,255,255,0.1)"}`,
                 color: autoPromoteActive ? "#10b981" : "#94a3b8"
               }}
-              title="Automatically switches execution from Paper Simulation to Live Mainnet when Win Rate >= 75%"
+              title="Automatically switches execution from Paper Simulation to Live Mainnet when Win Rate >= 85%"
             >
-              {autoPromoteActive ? "🚀 Auto-Promote (75%+ Win Trigger ON)" : "⏸️ Auto-Promote OFF"}
+              {autoPromoteActive ? "🚀 Auto-Promote (85%+ Win Trigger ON)" : "⏸️ Auto-Promote OFF"}
             </button>
 
             <div style={{ display: "flex", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
