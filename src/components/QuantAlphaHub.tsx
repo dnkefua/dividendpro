@@ -26,6 +26,8 @@ export default function QuantAlphaHub() {
 
   // Autonomous Bot State
   const [autoBotActive, setAutoBotActive] = useState(false);
+  const [autoPromoteActive, setAutoPromoteActive] = useState(true);
+  const [promotionAlert, setPromotionAlert] = useState<string | null>(null);
   const [totalBotProfitUsd, setTotalBotProfitUsd] = useState(148.50);
   const [totalBotProfitBnb, setTotalBotProfitBnb] = useState(0.2395);
 
@@ -74,7 +76,7 @@ export default function QuantAlphaHub() {
     }
   };
 
-  // Autonomous Bot Loop
+  // Autonomous Bot Loop & 75%+ Win-Rate Auto-Promotion Trigger
   useEffect(() => {
     let timer: any = null;
     if (autoBotActive) {
@@ -84,19 +86,33 @@ export default function QuantAlphaHub() {
           const execution = executeAlphaTrade(topOpp, "Autonomous Bot");
           setTotalBotProfitUsd(prev => parseFloat((prev + execution.pnlUsd).toFixed(2)));
           setTotalBotProfitBnb(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
+          
           if (executionMode === "paper") {
             setPaperBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           } else {
             setWalletBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           }
-          setTradeLogs(prev => [execution, ...prev.slice(0, 15)]);
+          
+          setTradeLogs(prev => {
+            const nextLogs = [execution, ...prev.slice(0, 15)];
+            const total = nextLogs.length;
+            const winning = nextLogs.filter(t => t.status === "PROFIT_TAKEN" || t.pnlUsd > 0).length;
+            const winRate = total > 0 ? Math.round((winning / total) * 100) : 80;
+
+            // Auto-Promote to Mainnet Trigger
+            if (autoPromoteActive && executionMode === "paper" && total >= 3 && winRate >= 75) {
+              setExecutionMode("mainnet");
+              setPromotionAlert(`🚀 STRATEGY AUTO-PROMOTED TO MAINNET! Paper win-rate hit ${winRate}% (${winning}/${total} winning trades). Live Mainnet Execution & Sniping is now ACTIVE!`);
+            }
+            return nextLogs;
+          });
         }
       }, 7500);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [autoBotActive, recommendations, executionMode]);
+  }, [autoBotActive, recommendations, executionMode, autoPromoteActive]);
 
   const handleManualExecute = (opp: AlphaRecommendation) => {
     setExecutingId(opp.id);
@@ -206,30 +222,62 @@ export default function QuantAlphaHub() {
             </div>
           </div>
 
-          {/* Mode Switcher Buttons */}
-          <div style={{ display: "flex", gap: "8px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {/* Mode Switcher & Auto-Promote Buttons */}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
             <button
-              onClick={() => setExecutionMode("paper")}
+              onClick={() => setAutoPromoteActive(!autoPromoteActive)}
               style={{
-                padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer", border: "none",
-                background: executionMode === "paper" ? "linear-gradient(135deg, #7C3AED, #4F46E5)" : "transparent",
-                color: executionMode === "paper" ? "white" : "#64748b"
+                padding: "8px 14px", borderRadius: "8px", fontSize: "11px", fontWeight: 800, cursor: "pointer",
+                background: autoPromoteActive ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${autoPromoteActive ? "#10b981" : "rgba(255,255,255,0.1)"}`,
+                color: autoPromoteActive ? "#10b981" : "#94a3b8"
               }}
+              title="Automatically switches execution from Paper Simulation to Live Mainnet when Win Rate >= 75%"
             >
-              ⚡ Paper Simulation (Risk-Free)
+              {autoPromoteActive ? "🚀 Auto-Promote (75%+ Win Trigger ON)" : "⏸️ Auto-Promote OFF"}
             </button>
-            <button
-              onClick={() => setExecutionMode("mainnet")}
-              style={{
-                padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer", border: "none",
-                background: executionMode === "mainnet" ? "linear-gradient(135deg, #10b981, #059669)" : "transparent",
-                color: executionMode === "mainnet" ? "#022c22" : "#64748b"
-              }}
-            >
-              🔥 Live BSC Mainnet (Real BNB)
-            </button>
+
+            <div style={{ display: "flex", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <button
+                onClick={() => setExecutionMode("paper")}
+                style={{
+                  padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer", border: "none",
+                  background: executionMode === "paper" ? "linear-gradient(135deg, #7C3AED, #4F46E5)" : "transparent",
+                  color: executionMode === "paper" ? "white" : "#64748b"
+                }}
+              >
+                ⚡ Paper Simulation (Risk-Free)
+              </button>
+              <button
+                onClick={() => setExecutionMode("mainnet")}
+                style={{
+                  padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer", border: "none",
+                  background: executionMode === "mainnet" ? "linear-gradient(135deg, #10b981, #059669)" : "transparent",
+                  color: executionMode === "mainnet" ? "#022c22" : "#64748b"
+                }}
+              >
+                🔥 Live BSC Mainnet (Real BNB)
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Promotion Alert Banner */}
+        {promotionAlert && (
+          <div style={{
+            background: "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(99,102,241,0.25))",
+            border: "1px solid #10b981", borderRadius: "12px", padding: "12px 16px",
+            color: "#f8fafc", fontSize: "13px", fontWeight: 800, display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <span>{promotionAlert}</span>
+            <button
+              onClick={() => setPromotionAlert(null)}
+              style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontWeight: 800 }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Live Balance Summary Breakdown */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
