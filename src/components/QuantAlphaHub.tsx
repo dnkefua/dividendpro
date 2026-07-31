@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   fetchLiveAlphaRecommendations,
   executeAlphaTrade,
@@ -37,8 +37,6 @@ export default function QuantAlphaHub() {
   const [autoBotActive, setAutoBotActive] = useState(true);
   const [autoPromoteActive, setAutoPromoteActive] = useState(true);
   const [promotionAlert, setPromotionAlert] = useState<string | null>(null);
-  const [totalBotProfitUsd, setTotalBotProfitUsd] = useState(148.50);
-  const [totalBotProfitBnb, setTotalBotProfitBnb] = useState(0.2395);
 
   // Trade History
   const [tradeLogs, setTradeLogs] = useState<AlphaTradeExecution[]>([
@@ -65,8 +63,41 @@ export default function QuantAlphaHub() {
       pnlBnb: 0.1484,
       status: "PROFIT_TAKEN",
       txHash: "0x89c41d1a8e...12bf"
+    },
+    {
+      id: "3",
+      timestamp: "06:28:12",
+      symbol: "BNB/USDT",
+      mode: "Autonomous Bot",
+      entryPrice: 615.2,
+      exitPrice: 628.4,
+      pnlUsd: 56.50,
+      pnlBnb: 0.0911,
+      status: "PROFIT_TAKEN",
+      txHash: "0x4b12c8a901...33ee"
+    },
+    {
+      id: "4",
+      timestamp: "06:31:05",
+      symbol: "MAESTRO SNIPER",
+      mode: "Autonomous Bot",
+      entryPrice: 0.012,
+      exitPrice: 0.0216,
+      pnlUsd: 52.63,
+      pnlBnb: 0.0850,
+      status: "PROFIT_TAKEN",
+      txHash: "0x9d33a1e2bf...77aa"
     }
   ]);
+
+  // Dynamically Sum Realized Profits from Trade History
+  const totalBotProfitUsd = useMemo(() => {
+    return parseFloat(tradeLogs.reduce((sum, t) => sum + (t.pnlUsd || 0), 0).toFixed(2));
+  }, [tradeLogs]);
+
+  const totalBotProfitBnb = useMemo(() => {
+    return parseFloat(tradeLogs.reduce((sum, t) => sum + (t.pnlBnb || 0), 0).toFixed(4));
+  }, [tradeLogs]);
 
   // Load recommendations on mount
   useEffect(() => {
@@ -85,7 +116,7 @@ export default function QuantAlphaHub() {
     }
   };
 
-  // Autonomous Bot Loop & 75%+ Win-Rate Auto-Promotion Trigger
+  // Autonomous Bot Loop & 85%+ Win-Rate Auto-Promotion Trigger
   useEffect(() => {
     let timer: any = null;
     if (autoBotActive) {
@@ -93,8 +124,6 @@ export default function QuantAlphaHub() {
         if (recommendations.length > 0) {
           const topOpp = recommendations[Math.floor(Math.random() * recommendations.length)];
           const execution = executeAlphaTrade(topOpp, "Autonomous Bot", executionMode);
-          setTotalBotProfitUsd(prev => parseFloat((prev + execution.pnlUsd).toFixed(2)));
-          setTotalBotProfitBnb(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
           
           if (executionMode === "paper") {
             setPaperBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
@@ -116,7 +145,7 @@ export default function QuantAlphaHub() {
             return nextLogs;
           });
         }
-      }, 7500);
+      }, 45000);
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -128,8 +157,6 @@ export default function QuantAlphaHub() {
     setExecutionNotice(null);
     setTimeout(() => {
       const execution = executeAlphaTrade(opp, "Manual", executionMode);
-      setTotalBotProfitUsd(prev => parseFloat((prev + execution.pnlUsd).toFixed(2)));
-      setTotalBotProfitBnb(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
       if (executionMode === "paper") {
         setPaperBnbBalance(prev => parseFloat((prev + execution.pnlBnb).toFixed(4)));
       } else {
