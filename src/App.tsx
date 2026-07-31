@@ -322,9 +322,9 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#f8f9ff] flex flex-col font-sans text-primary relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
-      {/* Top Professional Navigation Bar */}
-      <header className="sticky top-0 bg-white border-b border-outline-variant z-50 shadow-xs" id="main-header">
+    <div className={`min-h-screen bg-[#030712] text-slate-100 flex flex-col font-sans relative ${settings.compactView ? "text-xs" : "text-sm"}`} id="app-viewport">
+      {/* Aurix Dark Glass Navigation Bar */}
+      <header className="sticky top-0 bg-[#030712]/80 backdrop-blur-xl border-b border-white/10 z-50 shadow-2xl" id="main-header">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           
           {/* 3D Interactive Metallic Logo Brand */}
@@ -351,13 +351,13 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setActiveView(item.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 ${
                     activeView === item.id 
-                      ? "bg-surface-container-high text-primary" 
-                      : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+                      ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
                   {item.label}
                 </button>
               );

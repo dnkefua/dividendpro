@@ -1,33 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #0f172a;
-  --color-primary-container: #1e293b;
-  --color-on-primary: #ffffff;
+  --color-primary: #f8fafc;
+  --color-primary-container: #0f172a;
+  --color-on-primary: #030712;
   --color-secondary: #10b981;
-  --color-secondary-container: #d1fae5;
-  --color-on-secondary-container: #065f46;
-  --color-surface: #f8f9ff;
-  --color-surface-container: #f1f5f9;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f1f5f9;
-  --color-surface-container-high: #e2e8f0;
-  --color-surface-container-highest: #cbd5e1;
+  --color-secondary-container: #064e3b;
+  --color-on-secondary-container: #34d399;
+  --color-surface: #030712;
+  --color-surface-container: #0f172a;
+  --color-surface-container-lowest: #020617;
+  --color-surface-container-low: #0f172a;
+  --color-surface-container-high: #1e293b;
+  --color-surface-container-highest: #334155;
   --color-outline: #64748b;
-  --color-outline-variant: #e2e8f0;
-  --color-error: #ef4444;
-  --color-on-surface-variant: #475569;
+  --color-outline-variant: rgba(255, 255, 255, 0.1);
+  --color-error: #f87171;
+  --color-on-surface-variant: #94a3b8;
 }
 
 :root {
   --color-ticker-up: #10b981;
   --color-ticker-down: #ef4444;
   --color-glass-bg: rgba(15, 23, 42, 0.75);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background-color: #030712;
+  color: #f8fafc;
+  background-image: 
+    radial-gradient(circle at 50% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(circle at 85% 25%, rgba(16, 185, 129, 0.14), transparent 50%),
+    radial-gradient(circle at 15% 75%, rgba(139, 92, 246, 0.12), transparent 50%);
+  background-attachment: fixed;
 }
 
 .tabular-nums {
@@ -40,17 +50,34 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(3, 7, 18, 0.8);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @layer utilities {
+  .aurix-glass-card {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+  }
+  .aurix-glow-btn {
+    background: linear-gradient(135deg, #10b981, #6366f1);
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    transition: all 0.2s ease-in-out;
+  }
+  .aurix-glow-btn:hover {
+    box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
+    transform: translateY(-1px);
+  }
   .animate-fade-in {
     animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -68,7 +95,7 @@
   }
   .glass-panel {
     background: var(--color-glass-bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--color-glass-border);
   }
 }
