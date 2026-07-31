@@ -40,6 +40,7 @@ import BSCWalletView from "./components/BSCWalletView";
 import StrategyLabView from "./components/StrategyLabView";
 import QuantAlphaHub from "./components/QuantAlphaHub";
 import HummingbotView from "./components/HummingbotView";
+import Lumina3DLogo from "./components/Lumina3DLogo";
 import CommandPalette from "./components/CommandPalette";
 import DripSimulatorModal from "./components/DripSimulatorModal";
 import OnboardingWizard from "./components/OnboardingWizard";
@@ -326,18 +327,9 @@ export default function App() {
       <header className="sticky top-0 bg-white border-b border-outline-variant z-50 shadow-xs" id="main-header">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           
-          {/* Logo Brand Title */}
-          <div 
-            onClick={() => setActiveView("Portfolio")}
-            className="flex items-center gap-2.5 cursor-pointer group"
-          >
-            <div className="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5 text-secondary" />
-            </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight text-primary">Dividend<span className="text-secondary font-semibold">Pro</span></span>
-              <p className="text-[8px] font-bold font-mono tracking-widest text-outline uppercase leading-none mt-0.5">LUMINA FINANCE</p>
-            </div>
+          {/* 3D Interactive Metallic Logo Brand */}
+          <div onClick={() => setActiveView("AlphaHub")}>
+            <Lumina3DLogo size={42} showText={true} />
           </div>
 
           {/* Desktop Core Navigation Links */}
