@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
 
 // Firebase configuration for project: dividendpro-3b397
 const firebaseConfig = {
@@ -11,8 +12,10 @@ const firebaseConfig = {
   appId: "1:383971234567:web:abcd1234efgh5678"
 };
 
-// Initialize Firebase (fail-safe for local dev, reuse existing app instance if hot-reloaded)
+// Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-export { app, db };
+export { app, db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, type User };

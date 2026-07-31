@@ -829,9 +829,9 @@ export default function QuantAlphaHub() {
           📊 Real-Time Execution Ledger & Telegram Dispatch Log ({tradeLogs.length})
         </h3>
 
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", maxHeight: "480px", overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "#e2e8f0" }}>
-            <thead>
+            <thead style={{ position: "sticky", top: 0, background: "#0f172a", zIndex: 10 }}>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", textAlign: "left", color: "#64748b", fontSize: "11px" }}>
                 <th style={{ padding: "10px" }}>#</th>
                 <th style={{ padding: "10px" }}>TIME</th>
