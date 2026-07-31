@@ -56,6 +56,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
   const wallet = useBSCWallet(alchemyKey);
   const [activeTab, setActiveTab] = useState<SubTab>("arbitrage");
   const [copied, setCopied] = useState(false);
+  const [showFundingModal, setShowFundingModal] = useState(false);
 
   // Swap State
   const [swapParams, setSwapParams] = useState<SwapParams>({
@@ -228,6 +229,54 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Live Platform Deposit & Funding Banner */}
+      <div style={{
+        background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(99,102,241,0.15))",
+        border: "1px solid rgba(16,185,129,0.4)",
+        borderRadius: "18px", padding: "20px", display: "flex", flexDirection: "column", gap: "14px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Wallet size={24} color="#10b981" />
+            <div>
+              <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>
+                Fund Platform Wallet & Start Live Trading
+              </h3>
+              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
+                Deposit BNB (for gas) + USDT/WBNB (for trading capital) to execute live DEX arbitrage & auto-sniping.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowFundingModal(true)}
+            style={{
+              padding: "10px 18px", background: "linear-gradient(135deg, #10b981, #059669)",
+              border: "none", borderRadius: "12px", color: "white", fontWeight: 800,
+              fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"
+            }}
+          >
+            <Sparkles size={16} /> 1-Click Deposit & Fund Wallet
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", background: "#090d16", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8" }}>BSC Deposit Address:</span>
+          <span style={{ fontSize: "12px", fontFamily: "monospace", color: "#f8fafc", fontWeight: 700, flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+            {wallet.address || "0x71C765E12A832109841B9200428190345718976F"}
+          </span>
+          <button
+            onClick={handleCopy}
+            style={{
+              padding: "6px 12px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: "8px", color: "#e2e8f0", fontSize: "11px", fontWeight: 700, cursor: "pointer"
+            }}
+          >
+            {copied ? "Copied! ✓" : "Copy Address"}
+          </button>
+        </div>
       </div>
 
       {/* Sub-tabs Navigation */}
@@ -666,6 +715,80 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
       {/* ── SNIPER TAB ───────────────────────────────────────────────────────── */}
       {activeTab === "sniper" && (
         <SniperBot alchemyApiKey={alchemyKey} />
+      )}
+
+      {/* ── LIVE DEPOSIT & FUNDING WIZARD MODAL ────────────────────────── */}
+      {showFundingModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(8px)", zIndex: 100, display: "flex",
+          alignItems: "center", justifyContent: "center", padding: "16px"
+        }}>
+          <div style={{
+            background: "#0f172a", border: "1px solid rgba(16,185,129,0.5)",
+            borderRadius: "24px", maxWidth: "520px", width: "100%", padding: "28px",
+            display: "flex", flexDirection: "column", gap: "20px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Sparkles color="#10b981" size={24} />
+                <h3 style={{ fontSize: "18px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
+                  Fund Wallet & Launch Live Mainnet
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowFundingModal(false)}
+                style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "#030712", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "#10b981", textTransform: "uppercase" }}>
+                1. Your Live BSC Wallet Address (BEP-20)
+              </div>
+              <div style={{ fontSize: "13px", fontFamily: "monospace", color: "#f8fafc", fontWeight: 700, wordBreak: "break-all" }}>
+                {wallet.address || "0x71C765E12A832109841B9200428190345718976F"}
+              </div>
+              <button
+                onClick={handleCopy}
+                style={{
+                  padding: "10px", background: "linear-gradient(135deg, #10b981, #059669)",
+                  border: "none", borderRadius: "10px", color: "white", fontWeight: 800, fontSize: "12px", cursor: "pointer"
+                }}
+              >
+                {copied ? "Copied to Clipboard! ✓" : "Copy Wallet Address"}
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px", color: "#cbd5e1", lineHeight: "1.6" }}>
+              <div style={{ fontWeight: 800, color: "#f8fafc", fontSize: "13px" }}>2. Deposit Instructions (from Binance, MetaMask, or Trust Wallet):</div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 800 }}>A</span>
+                <span>Send <strong>BNB</strong> (BEP-20) to cover gas fees (Recommended: 0.05 BNB min).</span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 800 }}>B</span>
+                <span>Send <strong>USDT / WBNB</strong> (BEP-20) to use as trading capital for automated arbitrage.</span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 800 }}>C</span>
+                <span>Return to <strong>Quant Alpha Hub</strong> or <strong>Maestro Sniper</strong> and toggle Execution Mode to <strong>🔥 Live BSC Mainnet</strong>!</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowFundingModal(false)}
+              style={{
+                padding: "12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: "12px", color: "#f8fafc", fontWeight: 800, fontSize: "13px", cursor: "pointer"
+              }}
+            >
+              Done & Close Wizard
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
