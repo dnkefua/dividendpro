@@ -132,9 +132,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Remove legacy browser-managed Telegram credentials from prior releases.
-    localStorage.removeItem("divpro_tg_token");
+    // Poison the credential slot used by legacy clients. Older releases read
+    // this value before every 22-second browser-to-Telegram dispatch; removing
+    // it would make those clients fall back to their historically embedded
+    // token, while an invalid non-empty value fails closed.
+    localStorage.setItem("divpro_tg_token", "CLIENT_TELEGRAM_DISPATCH_REVOKED");
     localStorage.removeItem("divpro_tg_chat_id");
+    localStorage.removeItem("divpro_txn_counter");
+    localStorage.removeItem("divpro_total_profit_usd");
+    localStorage.removeItem("divpro_total_profit_bnb");
   }, []);
 
   const handleGoogleSignIn = async () => {

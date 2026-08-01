@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { Interface, Wallet, getAddress, parseUnits, verifyMessage } from "ethers";
 import { BSC_USDT_ADDRESS, hasMatchingUsdtTransfer } from "../server/truthLayer";
 import { executeAlphaTrade, type AlphaRecommendation } from "../src/services/quantAlphaEngine";
@@ -60,6 +61,16 @@ test("paper execution cannot masquerade as a blockchain transaction", () => {
   assert.equal(result.pnlUsd, 0);
   assert.match(result.txHash, /^SIM-/);
   assert.doesNotMatch(result.txHash, /^0x[0-9a-fA-F]{64}$/);
+});
+
+test("browser Telegram dispatch remains revoked and synthetic profit templates stay absent", () => {
+  const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const telegramSource = readFileSync(new URL("../src/services/telegram.ts", import.meta.url), "utf8");
+  const alphaSource = readFileSync(new URL("../src/components/QuantAlphaHub.tsx", import.meta.url), "utf8");
+
+  assert.match(appSource, /CLIENT_TELEGRAM_DISPATCH_REVOKED/);
+  assert.doesNotMatch(telegramSource, /api\.telegram\.org\/bot|VITE_TELEGRAM_BOT_TOKEN/);
+  assert.doesNotMatch(alphaSource, /AUTONOMOUS BOT TRADE EXECUTED|NET REALIZED PROFIT|sendTelegramMessage/);
 });
 
 test("settlement ownership proof binds Firebase uid and receipt fields to the sender wallet", async () => {
