@@ -3,11 +3,13 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
-import { WebSocketServer, WebSocket } from "ws";
+import { authenticateFirebaseRequest, registerTruthLayerRoutes } from "./server/truthLayer";
+import { registerMevControlRoutes } from "./server/mevControl";
+import { registerMevExecutionRoutes } from "./server/mevExecution";
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 // Lazy-initialize GoogleGenAI to prevent crashing on boot if key is missing
 let aiClient: GoogleGenAI | null = null;
@@ -30,10 +32,7 @@ function getAiClient(): GoogleGenAI {
       // Initialize Vertex AI on GCP using default credentials
       aiClient = new GoogleGenAI({});
     } else {
-      console.warn("GEMINI_API_KEY is missing. Initializing with local dev key to prevent crash on boot.");
-      aiClient = new GoogleGenAI({
-        apiKey: "AIzaSyD-mockKeyForLocalBootstrapping"
-      });
+      throw new Error("Server-side Gemini credentials are not configured.");
     }
   }
   return aiClient;
@@ -62,6 +61,15 @@ function apiRateLimiter(req: express.Request, res: express.Response, next: expre
   next();
 }
 
+async function requireFirebaseAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    await authenticateFirebaseRequest(req);
+    next();
+  } catch {
+    res.status(401).json({ error: "Authenticated Firebase session required." });
+  }
+}
+
 function sanitizePromptInput(str: unknown): string {
   if (typeof str !== "string") return "";
   return str.slice(0, 1500).replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
@@ -83,8 +91,13 @@ async function startServer() {
   // Apply rate limiting to all /api/ endpoints
   app.use("/api/", apiRateLimiter);
 
+  // Authenticated, fail-closed live execution verification and server-side notifications.
+  registerTruthLayerRoutes(app);
+  registerMevControlRoutes(app);
+  registerMevExecutionRoutes(app);
+
   // API Routes
-  app.post("/api/gemini/analyze", async (req, res) => {
+  app.post("/api/gemini/analyze", requireFirebaseAuth, async (req, res) => {
     try {
       const { symbol, name, sector, price, yieldVal, payoutRatio, safetyScore, whyPick, customPrompt, assetType } = req.body;
       const cleanCustomPrompt = sanitizePromptInput(customPrompt);
@@ -152,7 +165,7 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
   });
 
   // General query helper for global chatbot
-  app.post("/api/gemini/chat", async (req, res) => {
+  app.post("/api/gemini/chat", requireFirebaseAuth, async (req, res) => {
     try {
       const { message } = req.body;
       const ai = getAiClient();
@@ -173,7 +186,7 @@ Format your response in beautifully-structured Markdown, utilizing bold key term
   });
 
   // POST /api/vibe/debate — Swarm of investment committee agents debate a "vibe strategy"
-  app.post("/api/vibe/debate", async (req, res) => {
+  app.post("/api/vibe/debate", requireFirebaseAuth, async (req, res) => {
     try {
       const { prompt, symbol } = req.body;
       if (!prompt) return res.status(400).json({ error: "Strategy prompt is required" });
@@ -696,13 +709,15 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
       { strike: currentPrice * 1.10, expiry: "30 Days", premium: 1.10, impliedVol: 22.1 },
       { strike: currentPrice * 1.15, expiry: "30 Days", premium: 0.45, impliedVol: 20.8 }
     ];
-    res.json({ symbol, currentPrice, chain: mockOptions });
+    res.json({ symbol, currentPrice, chain: mockOptions, environment: "SIMULATION", source: "STATIC_OPTIONS_MODEL" });
   });
 
   app.get("/api/lse/macro", (req, res) => {
     // Mocking LSE Macroeconomic data for overlays
     res.json({
       series: "US 10-Year Treasury Yield",
+      environment: "SIMULATION",
+      source: "STATIC_MACRO_MODEL",
       data: Array.from({length: 30}, (_, i) => ({
         time: new Date(Date.now() - (30 - i) * 86400000).toISOString().split('T')[0],
         value: 4.0 + Math.sin(i * 0.2) * 0.5
@@ -718,47 +733,15 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const distPath = path.join(process.cwd(), "dist", "client");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  const httpServer = app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-  });
-
-  // --- Secure WebSocket Proxy ---
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/marketdata" });
-  wss.on("connection", (clientWs) => {
-    // Open a secure connection to LSE
-    const lseWs = new WebSocket("wss://data-ws.londonstrategicedge.com");
-
-    lseWs.on("open", () => {
-      // Authenticate securely from the backend
-      lseWs.send(JSON.stringify({
-        action: "auth",
-        api_key: process.env.LSE_API_KEY || "lse_live_mock"
-      }));
-    });
-
-    lseWs.on("message", (data) => {
-      // Relay messages to the frontend client
-      if (clientWs.readyState === WebSocket.OPEN) {
-        clientWs.send(data.toString());
-      }
-    });
-
-    clientWs.on("message", (data) => {
-      // Relay client subscriptions to LSE
-      if (lseWs.readyState === WebSocket.OPEN) {
-        lseWs.send(data.toString());
-      }
-    });
-
-    clientWs.on("close", () => lseWs.close());
-    lseWs.on("close", () => clientWs.close());
   });
 }
 

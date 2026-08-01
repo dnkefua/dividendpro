@@ -16,6 +16,7 @@ export function OptionsAnalysis({ symbol }: OptionsAnalysisProps) {
   const [loading, setLoading] = useState(true);
   const [chain, setChain] = useState<OptionContract[]>([]);
   const [basePrice, setBasePrice] = useState(0);
+  const [environment, setEnvironment] = useState("UNKNOWN");
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +27,7 @@ export function OptionsAnalysis({ symbol }: OptionsAnalysisProps) {
         if (mounted) {
           setChain(data.chain || []);
           setBasePrice(data.currentPrice || 0);
+          setEnvironment(data.environment || "UNKNOWN");
           setLoading(false);
         }
       })
@@ -54,6 +56,11 @@ export function OptionsAnalysis({ symbol }: OptionsAnalysisProps) {
 
   return (
     <div className="space-y-6">
+      {environment === "SIMULATION" && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-bold text-amber-500">
+          SIMULATED OPTIONS MODEL — these are static examples, not live quotes or executable contracts.
+        </div>
+      )}
       <div className="bg-secondary-container/30 border border-secondary-container rounded-2xl p-4 flex gap-4 items-start">
         <div className="p-2 bg-secondary/10 rounded-lg text-secondary mt-1">
           <Info size={20} />
@@ -62,7 +69,7 @@ export function OptionsAnalysis({ symbol }: OptionsAnalysisProps) {
           <h4 className="text-sm font-bold text-on-surface mb-1">Covered Call Strategy</h4>
           <p className="text-xs text-on-surface-variant leading-relaxed">
             Generate additional yield by selling Out-Of-The-Money (OTM) call options against your shares. 
-            If {symbol} stays below the strike price at expiry, you keep the premium as pure profit on top of your standard dividends.
+            In a real covered call, premium and assignment outcomes depend on an actual broker fill. The figures below are educational simulations.
           </p>
         </div>
       </div>

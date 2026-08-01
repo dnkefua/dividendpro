@@ -4,12 +4,11 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 
 // Firebase configuration for project: dividendpro-3b397
 const firebaseConfig = {
-  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyD-mockKeyForLocalDevEnvOnly",
-  authDomain: "dividendpro-3b397.firebaseapp.com",
-  projectId: "dividendpro-3b397",
-  storageBucket: "dividendpro-3b397.appspot.com",
-  messagingSenderId: "383971234567",
-  appId: "1:383971234567:web:abcd1234efgh5678"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCDLLYek5WgHBdJYe28CSx2IdHdch4lksQ",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "dividendpro-3b397.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "dividendpro-3b397",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "dividendpro-3b397.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "539817560279",
 };
 
 // Initialize Firebase

@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { MaestroTokenInfo } from "../types";
 import { checkHoneypot, getTokenMetadata } from "../services/alchemyBSC";
+import { getTelegramStatus, testTelegramConnection } from "../services/telegram";
 import {
   Search, ShieldCheck, ShieldAlert, ExternalLink,
   AlertTriangle, Info, Zap, Users, DollarSign, Activity
 } from "lucide-react";
-
-interface MaestroBotPanelProps {
-  alchemyApiKey: string;
-}
 
 const MAESTRO_BOT_URL = "https://t.me/maestro?start=";
 const BSCSCAN_URL = "https://bscscan.com/token/";
@@ -21,59 +18,36 @@ function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps) {
+export default function MaestroBotPanel() {
   const [contractInput, setContractInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tokenInfo, setTokenInfo] = useState<MaestroTokenInfo | null>(null);
 
   // Telegram Integration State
-  const [tgBotToken, setTgBotToken] = useState(() => localStorage.getItem("divpro_tg_token") || "");
-  const [tgChatId, setTgChatId] = useState(() => localStorage.getItem("divpro_tg_chat_id") || "");
-  const [tgConnected, setTgConnected] = useState(() => !!(localStorage.getItem("divpro_tg_token") && localStorage.getItem("divpro_tg_chat_id")));
+  const [tgConnected, setTgConnected] = useState(false);
   const [tgStatusNotice, setTgStatusNotice] = useState("");
 
   // Autonomous Maestro Profit Sniper State
   const [autoMaestroActive, setAutoMaestroActive] = useState(false);
   const [takeProfitTargetPct, setTakeProfitTargetPct] = useState(80);
   const [stopLossPct, setStopLossPct] = useState(25);
-  const [totalMaestroProfitBnb, setTotalMaestroProfitBnb] = useState(0.0845);
+  const [totalMaestroProfitBnb, setTotalMaestroProfitBnb] = useState(0);
   const [maestroLogs, setMaestroLogs] = useState<Array<{ id: string; time: string; type: "snipe" | "tp" | "tg"; message: string }>>([
-    { id: "1", time: new Date().toLocaleTimeString(), type: "snipe", message: "Autonomous Maestro sniped 0.05 BNB of $ALPHA at $0.0034" },
-    { id: "2", time: "06:02:14", type: "tp", message: "🎯 Profit Target Hit! Sold $ALPHA at +84% profit (+0.042 BNB / $26.04)" },
-    { id: "3", time: "06:02:15", type: "tg", message: "📱 Sent profit notification to Telegram chat" },
+    { id: "1", time: new Date().toLocaleTimeString(), type: "snipe", message: "🧪 Maestro paper simulator ready. No wallet transaction will be created." },
   ]);
 
-  // Helper to send Telegram notifications
-  const sendTelegramAlert = async (text: string) => {
-    if (!tgBotToken || !tgChatId) return false;
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: tgChatId, text: text, parse_mode: "Markdown" })
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleSaveTelegram = () => {
-    localStorage.setItem("divpro_tg_token", tgBotToken.trim());
-    localStorage.setItem("divpro_tg_chat_id", tgChatId.trim());
-    const isOk = !!(tgBotToken.trim() && tgChatId.trim());
-    setTgConnected(isOk);
-    setTgStatusNotice(isOk ? "Telegram credentials saved! Live profit alerts active." : "Please enter both Bot Token and Chat ID.");
-  };
+  useEffect(() => {
+    getTelegramStatus().then((status) => setTgConnected(status.configured));
+  }, []);
 
   const handleTestTelegram = async () => {
     setTgStatusNotice("Sending test alert to Telegram...");
-    const ok = await sendTelegramAlert("🚀 *Lumina Maestro Bot* — Telegram connection verified! Autonomous profit alerts active.");
+    const ok = await testTelegramConnection();
     if (ok) {
       setTgStatusNotice("✅ Test message delivered to Telegram!");
     } else {
-      setTgStatusNotice("❌ Failed to deliver. Check Bot Token & Chat ID.");
+      setTgStatusNotice("❌ Server-side Telegram is unavailable or you are not signed in.");
     }
   };
 
@@ -90,22 +64,18 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
 
         setTotalMaestroProfitBnb(prev => parseFloat((prev + profitBnb).toFixed(4)));
 
-        const logMsg = `🎯 [AUTONOMOUS MAESTRO] Sniped ${randSym} & executed TP at +${takeProfitTargetPct}%! Profit: +${profitBnb} BNB ($${profitUsd})`;
+        const logMsg = `🧪 [MAESTRO SIMULATION] Modelled ${randSym} TP at +${takeProfitTargetPct}%. Simulated PnL: +${profitBnb} BNB ($${profitUsd}); no funds moved.`;
         setMaestroLogs(prev => [
           { id: Math.random().toString(), time: new Date().toLocaleTimeString(), type: "tp", message: logMsg },
           ...prev.slice(0, 20)
         ]);
 
-        if (tgConnected) {
-          const tgMsg = `🚀 *MAESTRO AUTONOMOUS PROFIT SNIPED*\nAsset: *${randSym}*\nTarget: *+${takeProfitTargetPct}%*\nNet Profit: *+${profitBnb} BNB (~$${profitUsd})*\nStatus: Profit Secured & Wallet Funded ✅`;
-          await sendTelegramAlert(tgMsg);
-        }
       }, 7000);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [autoMaestroActive, takeProfitTargetPct, tgConnected, tgBotToken, tgChatId]);
+  }, [autoMaestroActive, takeProfitTargetPct]);
 
   const handleAnalyze = async () => {
     const addr = contractInput.trim();
@@ -119,7 +89,7 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
 
     try {
       const [meta, honeypot] = await Promise.all([
-        getTokenMetadata(alchemyApiKey, addr),
+        getTokenMetadata(addr),
         checkHoneypot(addr),
       ]);
 
@@ -186,10 +156,10 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
             </div>
             <div>
               <h2 style={{ fontSize: "20px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>
-                Autonomous Maestro Profit Sniper
+                Maestro Paper Strategy Simulator
               </h2>
               <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
-                Auto-snipes BSC launches, locks profit at target %, and dispatches live PnL reports to Telegram
+                Models token-launch entries and exits locally. It does not submit wallet transactions or report simulated PnL as live profit.
               </p>
             </div>
           </div>
@@ -208,7 +178,7 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
             }}
           >
             <Activity size={18} />
-            {autoMaestroActive ? "🟢 Maestro Bot ACTIVE" : "⚡ Start Autonomous Maestro"}
+            {autoMaestroActive ? "🧪 Paper Simulation ACTIVE" : "Start Paper Simulation"}
           </button>
         </div>
       </div>
@@ -219,7 +189,7 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
       }}>
         <div style={{ background: "rgba(15,20,30,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", padding: "16px" }}>
           <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>
-            Total Maestro Profit
+            Simulated Maestro PnL
           </div>
           <div style={{ fontSize: "20px", fontWeight: 800, color: "#10b981", fontFamily: "monospace" }}>
             +{totalMaestroProfitBnb} BNB (~${(totalMaestroProfitBnb * 620).toFixed(2)})
@@ -243,82 +213,43 @@ export default function MaestroBotPanel({ alchemyApiKey }: MaestroBotPanelProps)
 
         <div style={{ background: "rgba(15,20,30,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", padding: "16px" }}>
           <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>
-            Telegram Live Dispatch
+            Telegram Truth-Layer Status
           </div>
           <div style={{ fontSize: "14px", fontWeight: 700, color: tgConnected ? "#10b981" : "#f59e0b", display: "flex", alignItems: "center", gap: "6px" }}>
-            {tgConnected ? "🟢 Connected & Broadcasting" : "⚠️ Telegram Not Set"}
+            {tgConnected ? "🟢 Server Managed" : "⚠️ Server Not Configured"}
           </div>
         </div>
       </div>
 
-      {/* Telegram Configuration Box */}
+      {/* Server-managed Telegram status */}
       <div style={{
         background: "rgba(15,20,30,0.6)", border: "1px solid rgba(124,58,237,0.25)",
         borderRadius: "16px", padding: "20px", display: "flex", flexDirection: "column", gap: "14px"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#f8fafc", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            📱 Maestro Telegram Profit Reporter Setup
+            📱 Server-Managed Telegram Notifications
           </h3>
           <span style={{ fontSize: "11px", color: tgConnected ? "#10b981" : "#64748b" }}>
-            {tgConnected ? "● Live Telegram Sync" : "○ Disconnected"}
+            {tgConnected ? "● Server Configured" : "○ Server Not Configured"}
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div>
-            <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-              Telegram Bot Token (from @BotFather)
-            </label>
-            <input
-              type="password"
-              value={tgBotToken}
-              onChange={e => setTgBotToken(e.target.value)}
-              placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-              style={{
-                width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px",
-                color: "#f8fafc", fontSize: "12px", fontFamily: "monospace"
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-              Telegram Chat ID
-            </label>
-            <input
-              value={tgChatId}
-              onChange={e => setTgChatId(e.target.value)}
-              placeholder="e.g. 987654321"
-              style={{
-                width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px",
-                color: "#f8fafc", fontSize: "12px", fontFamily: "monospace"
-              }}
-            />
-          </div>
-        </div>
+        <p style={{ margin: 0, color: "#94a3b8", fontSize: "12px", lineHeight: 1.6 }}>
+          Bot credentials and the destination chat are held only by the backend. The browser cannot read, save, or call Telegram with the bot token. Maestro results on this page are simulations and are never reported as realized profit.
+        </p>
 
         <div style={{ display: "flex", gap: "10px" }}>
           <button
-            onClick={handleSaveTelegram}
-            style={{
-              padding: "8px 16px", background: "linear-gradient(135deg, #7C3AED, #6D28D9)",
-              border: "none", borderRadius: "8px", color: "white", fontWeight: 700, fontSize: "12px", cursor: "pointer"
-            }}
-          >
-            Save Telegram Config
-          </button>
-
-          <button
             onClick={handleTestTelegram}
+            disabled={!tgConnected}
             style={{
               padding: "8px 16px", background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#e2e8f0", fontWeight: 600, fontSize: "12px", cursor: "pointer"
+              border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#e2e8f0", fontWeight: 600, fontSize: "12px", cursor: tgConnected ? "pointer" : "not-allowed",
+              opacity: tgConnected ? 1 : 0.5,
             }}
           >
-            Send Test Alert 🚀
+            Send Authenticated Test Alert
           </button>
         </div>
 

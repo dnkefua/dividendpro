@@ -26,26 +26,6 @@ const BSC_NETWORK_CONFIG = {
   blockExplorerUrls: ["https://bscscan.com/"],
 };
 
-// PancakeSwap Router v2
-const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
-
-const PANCAKE_ROUTER_ABI = [
-  "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
-  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
-];
-
-const ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function symbol() view returns (string)",
-  "function name() view returns (string)",
-];
-
 // ── Token Registry ──────────────────────────────────────────────────────────
 
 export const STABLECOINS: Array<{ symbol: string; name: string; contract: string; decimals: number }> = [
@@ -104,7 +84,7 @@ const DEFAULT_STATE: BSCWalletState = {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useBSCWallet(alchemyApiKey: string) {
+export function useBSCWallet() {
   const [state, setState] = useState<BSCWalletState>(DEFAULT_STATE);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const providerRef = useRef<ethers.BrowserProvider | null>(null);
@@ -126,11 +106,11 @@ export function useBSCWallet(alchemyApiKey: string) {
 
       // Parallel: BNB balance + token balances + prices + tx history
       const [rawBnbHex, rawTokenBalances, prices, txIn, txOut] = await Promise.all([
-        getNativeBNBBalance(alchemyApiKey, address),
-        getSpecificTokenBalances(alchemyApiKey, address, contracts),
+        getNativeBNBBalance(address),
+        getSpecificTokenBalances(address, contracts),
         getTokenPrices(contracts),
-        getAssetTransfers(alchemyApiKey, address, "to"),
-        getAssetTransfers(alchemyApiKey, address, "from"),
+        getAssetTransfers(address, "to"),
+        getAssetTransfers(address, "from"),
       ]);
 
       if (!isMounted.current) return;
@@ -199,7 +179,7 @@ export function useBSCWallet(alchemyApiKey: string) {
     } finally {
       if (isMounted.current) setIsLoadingData(false);
     }
-  }, [alchemyApiKey]);
+  }, []);
 
   // ── Switch / Add BSC Network ───────────────────────────────────────────
 
@@ -282,81 +262,14 @@ export function useBSCWallet(alchemyApiKey: string) {
     if (state.address) loadBalances(state.address);
   }, [state.address, loadBalances]);
 
-  // ── Swap tokens via PancakeSwap Router v2 ─────────────────────────────
-
-  // ── Swap tokens via PancakeSwap Router v2 ─────────────────────────────
-
-  const swap = useCallback(async (params: SwapParams): Promise<{ hash: string } | null> => {
-    try {
-      let signer: ethers.Signer | null = null;
-      let targetAddress = state.address || "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
-
-      if (providerRef.current && state.isConnected) {
-        signer = await providerRef.current.getSigner();
-      }
-
-      if (!signer) {
-        // Fallback execution or simulation hash when browser wallet is not connected
-        const randomTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-        if (state.address) {
-          setTimeout(() => loadBalances(state.address!), 2000);
-        }
-        return { hash: randomTx };
-      }
-
-      const router = new ethers.Contract(PANCAKE_ROUTER, PANCAKE_ROUTER_ABI, signer);
-      const deadline = Math.floor(Date.now() / 1000) + params.deadlineMinutes * 60;
-      const isNativeIn = params.tokenIn.toLowerCase() === WBNB.toLowerCase();
-      const isNativeOut = params.tokenOut.toLowerCase() === WBNB.toLowerCase();
-
-      const meta = ALL_TOKENS.find(t => t.contract.toLowerCase() === params.tokenIn.toLowerCase());
-      const decimalsIn = meta?.decimals ?? 18;
-      const amountIn = ethers.parseUnits(params.amountIn, decimalsIn);
-
-      const path = [params.tokenIn, params.tokenOut];
-      const amounts: bigint[] = await router.getAmountsOut(amountIn, path);
-      const amountOutMin = amounts[1] * BigInt(Math.floor((1 - params.slippagePct / 100) * 10000)) / BigInt(10000);
-
-      let tx: { hash: string };
-      if (isNativeIn) {
-        tx = await router.swapExactETHForTokensSupportingFeeOnTransferTokens(
-          amountOutMin, path, targetAddress, deadline, { value: amountIn }
-        );
-      } else if (isNativeOut) {
-        const tokenContract = new ethers.Contract(params.tokenIn, ERC20_ABI, signer);
-        const allowance: bigint = await tokenContract.allowance(targetAddress, PANCAKE_ROUTER);
-        if (allowance < amountIn) {
-          const approveTx = await tokenContract.approve(PANCAKE_ROUTER, amountIn);
-          await (approveTx as unknown as { wait: () => Promise<void> }).wait();
-        }
-        tx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-          amountIn, amountOutMin, path, targetAddress, deadline
-        );
-      } else {
-        const tokenContract = new ethers.Contract(params.tokenIn, ERC20_ABI, signer);
-        const allowance: bigint = await tokenContract.allowance(targetAddress, PANCAKE_ROUTER);
-        if (allowance < amountIn) {
-          const approveTx = await tokenContract.approve(PANCAKE_ROUTER, amountIn);
-          await (approveTx as unknown as { wait: () => Promise<void> }).wait();
-        }
-        tx = await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-          amountIn, amountOutMin, path, targetAddress, deadline
-        );
-      }
-
-      if (state.address) {
-        setTimeout(() => loadBalances(state.address!), 3000);
-      }
-
-      return { hash: tx.hash };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Swap failed.";
-      setState(prev => ({ ...prev, error: msg }));
-      // Return simulated hash fallback if user rejected or network error so UX is never stuck
-      const fallbackTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-      return { hash: fallbackTx };
-    }
-  }, [state.address, state.isConnected, loadBalances]);
+  // Generic router swaps are fail-closed until router-specific receipt evidence exists.
+  const swap = useCallback(async (_params: SwapParams): Promise<{ hash: string; blockNumber: number } | null> => {
+    setState(prev => ({
+      ...prev,
+      error: "PancakeSwap execution is disabled until the server can reconcile router calls, token deltas, and receipt evidence.",
+    }));
+    return null;
+  }, []);
 
   // ── Account / chain change listeners ──────────────────────────────────
 

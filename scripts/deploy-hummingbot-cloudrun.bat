@@ -13,7 +13,8 @@ gcloud run deploy hummingbot-gateway ^
   --image gcr.io/dividendpro-3b397/hummingbot-gateway:latest ^
   --platform managed ^
   --region us-central1 ^
-  --allow-unauthenticated ^
+  --no-allow-unauthenticated ^
+  --set-secrets CONFIG_PASSWORD=hummingbot-config-password:latest ^
   --port 15888 ^
   --memory 2Gi ^
   --cpu 2

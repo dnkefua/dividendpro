@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { UserSettings, SwapParams } from "../types";
 import { useBSCWallet, STABLECOINS, TOP20_TOKENS } from "../hooks/useBSCWallet";
 import MaestroBotPanel from "./MaestroBotPanel";
 import SniperBot from "./SniperBot";
@@ -15,13 +14,7 @@ import {
   ChevronDown, Link, Sparkles, ShieldCheck, Flame, Play, AlertTriangle
 } from "lucide-react";
 
-interface BSCWalletViewProps {
-  settings: UserSettings;
-}
-
 type SubTab = "wallet" | "arbitrage" | "audit" | "holdings" | "swap" | "sniper" | "maestro";
-
-const BSCSCAN_TX = "https://bscscan.com/tx/";
 
 function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -48,27 +41,11 @@ function TokenLogo({ symbol }: { symbol: string }) {
   );
 }
 
-export default function BSCWalletView({ settings }: BSCWalletViewProps) {
-  const alchemyKey =
-    (import.meta.env.VITE_ALCHEMY_API_KEY as string) ||
-    (settings as UserSettings & { alchemyApiKey?: string }).alchemyApiKey ||
-    "";
-  const wallet = useBSCWallet(alchemyKey);
+export default function BSCWalletView() {
+  const wallet = useBSCWallet();
   const [activeTab, setActiveTab] = useState<SubTab>("arbitrage");
   const [copied, setCopied] = useState(false);
   const [showFundingModal, setShowFundingModal] = useState(false);
-
-  // Swap State
-  const [swapParams, setSwapParams] = useState<SwapParams>({
-    tokenIn: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", // WBNB
-    tokenOut: "0x55d398326f99059fF775485246999027B3197955", // USDT
-    amountIn: "0.01",
-    slippagePct: 0.5,
-    deadlineMinutes: 20,
-  });
-  const [swapResult, setSwapResult] = useState<{ hash: string } | null>(null);
-  const [swapping, setSwapping] = useState(false);
-  const [swapError, setSwapError] = useState("");
 
   // Arbitrage Scanner & Auto-Bot State
   const [arbSymbol, setArbSymbol] = useState("CAKE");
@@ -78,13 +55,10 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
   const [executingArbId, setExecutingArbId] = useState<string | null>(null);
   const [arbNotice, setArbNotice] = useState<string | null>(null);
 
-  // Automated Arbitrage Execution Engine
+  // Explicit paper-only arbitrage scanner. No flash-loan executor is configured.
   const [autoArbBotActive, setAutoArbBotActive] = useState(false);
-  const [autoArbLogs, setAutoArbLogs] = useState<Array<{ id: string; time: string; pair: string; profitBnb: number; profitUsd: number }>>([
-    { id: "1", time: "05:48:12", pair: "CAKE/WBNB", profitBnb: 0.0185, profitUsd: 11.47 },
-    { id: "2", time: "05:49:30", pair: "CAKE/WBNB", profitBnb: 0.0240, profitUsd: 14.88 },
-  ]);
-  const [totalArbPnlBnb, setTotalArbPnlBnb] = useState(0.0425);
+  const [autoArbLogs, setAutoArbLogs] = useState<Array<{ id: string; time: string; pair: string; profitBnb: number; profitUsd: number }>>([]);
+  const [totalArbPnlBnb, setTotalArbPnlBnb] = useState(0);
 
   // Security Auditor State
   const [auditInput, setAuditInput] = useState("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"); // CAKE contract
@@ -140,11 +114,8 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
 
   const handleExecuteArbitrage = async (opp: DexArbitrageOpportunity) => {
     setExecutingArbId(opp.buyDex + opp.sellDex);
-    setArbNotice(null);
-    setTimeout(() => {
-      setExecutingArbId(null);
-      setArbNotice(`Successfully executed Arbitrage Flash Swap on ${opp.pair}! Net profit: +${opp.estimatedProfitBnb} BNB ($${opp.estimatedProfitUsd})`);
-    }, 2000);
+    setArbNotice(`No transaction submitted. ${opp.pair} is a ${opp.environment === "LIVE_DATA" ? "live-data quote" : "simulated fallback"}; a verified atomic flash-swap executor is not configured.`);
+    setExecutingArbId(null);
   };
 
   const handleRunSecurityAudit = async () => {
@@ -165,21 +136,6 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
     navigator.clipboard.writeText(wallet.address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSwap = async () => {
-    setSwapping(true);
-    setSwapError("");
-    setSwapResult(null);
-    try {
-      const result = await wallet.swap(swapParams);
-      if (result) setSwapResult(result);
-      else setSwapError(wallet.error || "Swap failed.");
-    } catch {
-      setSwapError("Swap failed. Check your wallet and try again.");
-    } finally {
-      setSwapping(false);
-    }
   };
 
   const TAB_STYLE = (active: boolean): React.CSSProperties => ({
@@ -206,10 +162,10 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
           </div>
           <div>
             <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>
-              BSC Web3 Profit Terminal
+              BSC Web3 Execution & Evidence Terminal
             </h1>
             <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
-              Real-time DEX Arbitrage Scanner · Honeypot Auditor · Auto-Sniper Bot
+              DEX quote scanner · fail-closed token screening · explicitly signed wallet actions
             </p>
           </div>
         </div>
@@ -231,7 +187,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
         )}
       </div>
 
-      {/* Live Platform Deposit & Funding Banner */}
+      {/* Wallet readiness banner */}
       <div style={{
         background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(99,102,241,0.15))",
         border: "1px solid rgba(16,185,129,0.4)",
@@ -242,10 +198,10 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
             <Wallet size={24} color="#10b981" />
             <div>
               <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>
-                Fund Platform Wallet & Start Live Trading
+                Review Wallet Readiness
               </h3>
               <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
-                Deposit BNB (for gas) + USDT/WBNB (for trading capital) to execute live DEX arbitrage & auto-sniping.
+                Funding does not activate automation. Only explicitly signed transactions can move funds; the arbitrage scanner is paper-only.
               </p>
             </div>
           </div>
@@ -364,7 +320,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                 }}
               >
                 <Play size={16} />
-                {autoArbBotActive ? "Auto-Flash Bot ACTIVE" : "Start Auto-Flash Bot"}
+                {autoArbBotActive ? "Paper Spread Scanner ACTIVE" : "Start Paper Spread Scanner"}
               </button>
 
               <button
@@ -391,23 +347,23 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
           }}>
             <div>
               <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>
-                ⚡ Auto Flash-Swap Engine Status
+                🧪 Paper Spread Scanner Status
               </div>
               <div style={{ fontSize: "18px", fontWeight: 800, color: "#f8fafc" }}>
-                {autoArbBotActive ? "🟢 Scanning & Auto-Executing DEX Spreads" : "⚪ Standby Mode — Click Start Bot above"}
+                {autoArbBotActive ? "Scanning quotes — no transactions submitted" : "Standby — paper-only scanner"}
               </div>
             </div>
 
             <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 600 }}>Total Auto Profit</div>
+                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 600 }}>Cumulative Model PnL</div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#10b981", fontFamily: "monospace" }}>
                   +{totalArbPnlBnb} BNB (~${(totalArbPnlBnb * 620).toFixed(2)})
                 </div>
               </div>
 
               <div>
-                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 600 }}>Trades Executed</div>
+                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 600 }}>Paper Samples</div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#a78bfa", fontFamily: "monospace" }}>
                   {autoArbLogs.length}
                 </div>
@@ -444,6 +400,9 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                     }}>
                       +{opp.spreadPct}% Spread
                     </span>
+                    <span style={{ marginLeft: "8px", color: opp.environment === "LIVE_DATA" ? "#60a5fa" : "#f59e0b", fontSize: "10px", fontWeight: 800 }}>
+                      {opp.environment === "LIVE_DATA" ? "LIVE QUOTE" : "SIMULATED FALLBACK"}
+                    </span>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "12px", marginBottom: "16px" }}>
@@ -462,7 +421,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
 
                   <div style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.06)", padding: "12px", borderRadius: "12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>
-                      <span>Estimated Net Profit</span>
+                      <span>Modelled Net PnL</span>
                       <strong style={{ color: "#10b981", fontSize: "14px", fontFamily: "monospace" }}>+${opp.estimatedProfitUsd} ({opp.estimatedProfitBnb} BNB)</strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b" }}>
@@ -483,11 +442,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                     display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
                   }}
                 >
-                  {executingArbId === opp.buyDex + opp.sellDex ? (
-                    <><Loader size={16} /> Executing Flash Swap…</>
-                  ) : (
-                    <><Zap size={16} /> Execute Arbitrage Flash Swap</>
-                  )}
+                  <><Zap size={16} /> Explain Execution Availability</>
                 </button>
               </div>
             ))}
@@ -503,10 +458,10 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
             borderRadius: "16px", padding: "24px"
           }}>
             <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", margin: "0 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <ShieldCheck size={18} color="#10b981" /> BSC Contract Security & Honeypot Detector
+              <ShieldCheck size={18} color="#10b981" /> BSC Honeypot Oracle Screen
             </h2>
             <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 20px" }}>
-              Audit any Binance Smart Chain contract before buying to verify taxes, honeypot locks, and mintability risks.
+              Query reported buy/sell taxes and honeypot signals. This limited oracle screen does not verify liquidity locks, ownership, proxy behavior, or mintability.
             </p>
 
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
@@ -533,7 +488,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                 }}
               >
                 {auditing ? <Loader size={16} /> : <Shield size={16} />}
-                Audit Contract
+                Run Oracle Screen
               </button>
             </div>
 
@@ -568,10 +523,10 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
                 <div>
                   <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>
-                    Security Score: {securityReport.safetyScore} / 100
+                    Oracle Screen Score: {securityReport.safetyScore} / 100
                   </h3>
                   <span style={{ fontSize: "12px", color: securityReport.safetyScore >= 80 ? "#10b981" : "#f87171" }}>
-                    {securityReport.safetyScore >= 80 ? "Very Safe — Passed Security Audit" : "High Risk — Proceed with Caution"}
+                    {securityReport.safetyScore >= 80 ? "No honeypot signal reported — not a full audit" : "Oracle unavailable or risk signal reported — execution remains blocked"}
                   </span>
                 </div>
                 <span style={{
@@ -580,7 +535,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                   border: `1px solid ${securityReport.isHoneypot ? "rgba(239,68,68,0.4)" : "rgba(16,185,129,0.4)"}`,
                   padding: "6px 14px", borderRadius: "20px", fontWeight: 800, fontSize: "13px"
                 }}>
-                  {securityReport.isHoneypot ? "⚠️ HONEYPOT DETECTED" : "✓ NOT A HONEYPOT"}
+                  {securityReport.isHoneypot ? "⚠️ HONEYPOT SIGNAL REPORTED" : "LIMITED SCREEN — NO SIGNAL REPORTED"}
                 </span>
               </div>
 
@@ -600,9 +555,9 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
                 </div>
 
                 <div style={{ background: "#1e293b", padding: "12px", borderRadius: "10px" }}>
-                  <div style={{ fontSize: "11px", color: "#64748b" }}>Liquidity Locked</div>
-                  <div style={{ fontSize: "16px", fontWeight: 800, color: "#10b981" }}>
-                    {securityReport.liquidityLockedPct}%
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Liquidity Lock</div>
+                  <div style={{ fontSize: "13px", fontWeight: 800, color: "#f59e0b" }}>
+                    Not evaluated
                   </div>
                 </div>
               </div>
@@ -693,28 +648,30 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
       {/* ── FAST SWAP TAB ───────────────────────────────────────────────────── */}
       {activeTab === "swap" && (
         <div style={{ background: "#0f172a", borderRadius: "16px", padding: "24px", maxWidth: "480px", margin: "0 auto" }}>
-          <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", marginBottom: "16px" }}>Fast PancakeSwap v2 Swap</h3>
+          <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", marginBottom: "8px" }}>PancakeSwap v2 Execution</h3>
+          <p style={{ color: "#94a3b8", fontSize: "12px", lineHeight: 1.5 }}>
+            Disabled for this release. A router-specific receipt and token-delta reconciler must be deployed before swaps can move funds.
+          </p>
           <button
-            onClick={handleSwap}
-            disabled={!wallet.isConnected || swapping}
+            disabled
             style={{
               width: "100%", padding: "14px", background: "linear-gradient(135deg, #7C3AED, #6D28D9)",
-              border: "none", borderRadius: "10px", color: "white", fontWeight: 700, cursor: "pointer"
+              border: "none", borderRadius: "10px", color: "white", fontWeight: 700, cursor: "not-allowed", opacity: 0.5
             }}
           >
-            {swapping ? "Swapping…" : "Swap Tokens"}
+            Execution Unavailable
           </button>
         </div>
       )}
 
       {/* ── MAESTRO TAB ────────────────────────────────────────────────────── */}
       {activeTab === "maestro" && (
-        <MaestroBotPanel alchemyApiKey={alchemyKey} />
+        <MaestroBotPanel />
       )}
 
       {/* ── SNIPER TAB ───────────────────────────────────────────────────────── */}
       {activeTab === "sniper" && (
-        <SniperBot alchemyApiKey={alchemyKey} />
+        <SniperBot />
       )}
 
       {/* ── LIVE DEPOSIT & FUNDING WIZARD MODAL ────────────────────────── */}
@@ -733,7 +690,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Sparkles color="#10b981" size={24} />
                 <h3 style={{ fontSize: "18px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
-                  Fund Wallet & Launch Live Mainnet
+                  Wallet Funding Safety Checklist
                 </h3>
               </div>
               <button
@@ -746,7 +703,7 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "#030712", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ fontSize: "11px", fontWeight: 800, color: "#10b981", textTransform: "uppercase" }}>
-                1. Your Live BSC Wallet Address (BEP-20)
+                1. Connected BSC Wallet Address (BEP-20)
               </div>
               <div style={{ fontSize: "13px", fontFamily: "monospace", color: "#f8fafc", fontWeight: 700, wordBreak: "break-all" }}>
                 {wallet.address || "0x71C765E12A832109841B9200428190345718976F"}
@@ -770,11 +727,11 @@ export default function BSCWalletView({ settings }: BSCWalletViewProps) {
               </div>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                 <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 800 }}>B</span>
-                <span>Send <strong>USDT / WBNB</strong> (BEP-20) to use as trading capital for automated arbitrage.</span>
+                <span>Only send <strong>USDT / WBNB</strong> if you independently intend to hold those assets in this wallet. No automated arbitrage executor is configured.</span>
               </div>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                 <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 800 }}>C</span>
-                <span>Return to <strong>Quant Alpha Hub</strong> or <strong>Maestro Sniper</strong> and toggle Execution Mode to <strong>🔥 Live BSC Mainnet</strong>!</span>
+                <span>For the verified path, use <strong>Quant Alpha Hub → Verified USDT Transfer</strong>, inspect the wallet prompt, and require the BscScan evidence link.</span>
               </div>
             </div>
 

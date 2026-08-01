@@ -8,7 +8,12 @@ dotenv.config();
 
 export default defineConfig(() => {
   return {
+    envPrefix: ['VITE_FIREBASE_', 'VITE_BASE'],
     base: process.env.VITE_BASE || '/',
+    build: {
+      outDir: 'dist/client',
+      emptyOutDir: true,
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

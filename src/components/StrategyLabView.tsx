@@ -138,10 +138,10 @@ export default function StrategyLabView() {
     setRunAll(false);
   }, [symbol, timeframe, startDate, endDate, capital, tp, sl]);
 
-  // ── Apply best strategy to sniper ────────────────────────────────────────
+  // ── Save a paper strategy candidate for future review ────────────────────
 
   const applyToSniper = (result: BacktestResult) => {
-    // Save best strategy config to localStorage for sniper bot to use
+    // This record cannot activate the fail-closed sniper.
     const sniperEnhancement = {
       strategyName: result.strategy,
       winRate: result.winRate,
@@ -152,7 +152,7 @@ export default function StrategyLabView() {
       appliedAt: new Date().toISOString(),
     };
     localStorage.setItem("divpro_sniper_strategy", JSON.stringify(sniperEnhancement));
-    alert(`✅ Strategy "${result.strategy}" applied to sniper bot!\nWin rate: ${result.winRate.toFixed(1)}%\nTP: ${tp}% | SL: ${sl}%`);
+    alert(`🧪 Paper strategy "${result.strategy}" saved for future review.\nSimulated win rate: ${result.winRate.toFixed(1)}%\nNo live sniper action was enabled.`);
   };
 
   // ── Live stream ───────────────────────────────────────────────────────────
@@ -193,16 +193,16 @@ export default function StrategyLabView() {
           <div>
             <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#e2e8f0", margin: 0 }}>Strategy Lab</h1>
             <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
-              Powered by London Strategic Edge · 133 Billion Ticks
+              Paper backtests using public market data with an explicitly labelled synthetic fallback
             </p>
           </div>
         </div>
-        {usage && (
+        {usage && usage.monthly_bytes_limit > 0 ? (
           <div style={{ fontSize: "11px", color: "#475569", textAlign: "right" }}>
             <div>API: {usage.calls_per_minute} req/min</div>
             <div>{((usage.monthly_bytes_used / usage.monthly_bytes_limit) * 100).toFixed(1)}% monthly usage</div>
           </div>
-        )}
+        ) : <div style={{ fontSize: "11px", color: "#f59e0b" }}>Private dataset adapter unavailable</div>}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "16px", alignItems: "start" }}>
@@ -343,7 +343,7 @@ export default function StrategyLabView() {
                       <td style={{ padding: "10px 12px" }}>
                         <button onClick={e => { e.stopPropagation(); applyToSniper(r); }}
                           style={{ padding: "5px 10px", background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: "6px", color: "#a78bfa", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
-                          ⚡ Apply
+                          🧪 Save
                         </button>
                       </td>
                     </tr>
@@ -362,11 +362,14 @@ export default function StrategyLabView() {
                   <div>
                     <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#e2e8f0", margin: "0 0 4px" }}>{activeResult.strategy}</h2>
                     <div style={{ fontSize: "12px", color: "#64748b" }}>{activeResult.symbol} · {activeResult.timeframe} · {activeResult.startDate} → {activeResult.endDate}</div>
+                    <div style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 800, marginTop: "6px" }}>
+                      SIMULATED BACKTEST · {activeResult.dataEnvironment === "LIVE_DATA" ? "historical market data" : "synthetic fallback data"} · no exchange fills
+                    </div>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button onClick={() => applyToSniper(activeResult)}
                       style={{ padding: "9px 16px", background: "linear-gradient(135deg, #7C3AED, #4F46E5)", border: "none", borderRadius: "8px", color: "white", fontWeight: 700, fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Zap size={13} />Apply to Sniper Bot
+                      <Zap size={13} />Save Paper Candidate
                     </button>
                   </div>
                 </div>

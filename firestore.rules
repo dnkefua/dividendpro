@@ -1,8 +1,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, create, update, delete: if isOwner(userId);
+
+      match /transactions/{transactionId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /settings/{settingId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      // Live evidence is written only by the authenticated server after chain verification.
+      match /settlements/{transactionHash} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+
+      // Statistical promotion state is derived and written by the control plane.
+      match /mevStrategies/{strategyId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+
+        match /simulationObservations/{observationId} {
+          allow read: if isOwner(userId);
+          allow write: if false;
+        }
+      }
+
+      // Finalized native execution evidence is immutable from the browser.
+      match /mevExecutions/{executionId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

@@ -44,6 +44,8 @@ export interface AlphaTradeExecution {
   netProfitBnb?: number;
   status: "OPEN" | "PROFIT_TAKEN" | "STOP_LOSS" | "REJECTED_GAS_FILTER";
   txHash: string;
+  environment?: "SIMULATION" | "LIVE";
+  verificationStatus?: "NOT_APPLICABLE" | "VERIFIED_ON_CHAIN";
 }
 
 // ── Multi-Factor Quant Analysis Calculator ───────────────────────────────────
@@ -74,50 +76,19 @@ function calculateEMA(closes: number[], period: number): number {
   return ema;
 }
 
-// ── Trade Execution Simulation with Zero-Gas Net Profit Filter ───────────────
+// ── Paper-trade model; never represents a fill or realized profit ─────────────
 
 export function executeAlphaTrade(
   opp: AlphaRecommendation,
   mode: "Manual" | "Autonomous Bot",
   executionMode: "paper" | "mainnet" = "paper",
-  accumulatedProfitUsd: number = 4185.40
+  accumulatedProfitUsd: number = 0
 ): AlphaTradeExecution {
-  const randomTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  
-  // Dynamic Reinvested Compounding Position Sizing:
-  // Initial Deposit ($257) + 100% Auto-Compounded Profits ($4,185.40+) = $4,442.40+ Effective Pool Equity
-  const effectiveCapitalUsd = 257.00 + Math.max(0, accumulatedProfitUsd);
-  
-  // Position Sizing: Deploys 15% - 25% of Compounded Capital ($450 - $1,100 per trade)
-  const compoundingMultiplier = Math.min(4.5, 1.0 + (Math.max(0, accumulatedProfitUsd) / 1200));
-  const baseReturnUsd = Math.max(35.0, opp.expectedReturnUsd || 45.0);
-  
-  // Dynamic Trade Net Return ($150 - $520 USD per trade!)
-  const profitUsd = parseFloat((Math.min(520, Math.max(25.0, baseReturnUsd * compoundingMultiplier))).toFixed(2));
-  const profitBnb = parseFloat((profitUsd / 620).toFixed(4));
-
-  // Gas Fee Calculation (0.00 BNB in Paper Mode, 0.0012 BNB in Mainnet Mode)
-  const estimatedGasBnb = executionMode === "paper" ? 0.0000 : 0.0012;
-  const netProfitBnb = parseFloat((profitBnb - estimatedGasBnb).toFixed(4));
-
-  // Strict Net-Profit Gas Filter: Gross Return must exceed 1.5x Gas Cost on Mainnet
-  const satisfiesGasFilter = executionMode === "paper" || profitBnb >= (estimatedGasBnb * 1.5);
-
-  if (!satisfiesGasFilter) {
-    return {
-      id: Math.random().toString(),
-      timestamp: new Date().toLocaleTimeString(),
-      symbol: opp.symbol,
-      mode,
-      entryPrice: opp.currentPrice,
-      pnlUsd: 0,
-      pnlBnb: 0,
-      gasCostBnb: estimatedGasBnb,
-      netProfitBnb: 0,
-      status: "REJECTED_GAS_FILTER",
-      txHash: "SKIPPED_LOW_MARGIN"
-    };
+  if (executionMode === "mainnet") {
+    throw new Error("No live order router is configured for Quant Alpha signals. Use paper mode or the verified USDT settlement path.");
   }
+  const simulationId = `SIM-${crypto.randomUUID()}`;
+  void accumulatedProfitUsd;
 
   return {
     id: Math.random().toString(),
@@ -125,13 +96,14 @@ export function executeAlphaTrade(
     symbol: opp.symbol,
     mode,
     entryPrice: opp.currentPrice,
-    exitPrice: opp.takeProfitTarget,
-    pnlUsd: profitUsd,
-    pnlBnb: netProfitBnb,
-    gasCostBnb: estimatedGasBnb,
-    netProfitBnb,
-    status: "PROFIT_TAKEN",
-    txHash: randomTx,
+    pnlUsd: 0,
+    pnlBnb: 0,
+    gasCostBnb: 0,
+    netProfitBnb: 0,
+    status: "OPEN",
+    txHash: simulationId,
+    environment: "SIMULATION",
+    verificationStatus: "NOT_APPLICABLE",
   };
 }
 
@@ -144,7 +116,7 @@ export async function fetchLiveAlphaRecommendations(): Promise<AlphaRecommendati
   // 1. Ingest & Analyze DEX Arbitrage Spreads
   try {
     const cakeArb = await scanDexArbitrage("CAKE", 2.0);
-    if (cakeArb.length > 0 && cakeArb[0].spreadPct > 0.4) {
+    if (cakeArb.length > 0 && cakeArb[0].environment === "LIVE_DATA" && cakeArb[0].spreadPct > 0.4) {
       const opp = cakeArb[0];
       recommendations.push({
         id: "arb-cake",
@@ -163,7 +135,7 @@ export async function fetchLiveAlphaRecommendations(): Promise<AlphaRecommendati
         kellyPositionPct: 6.5,
         expectedReturnUsd: opp.estimatedProfitUsd,
         expectedReturnBnb: opp.estimatedProfitBnb,
-        reasoning: `Live ${opp.spreadPct}% price spread detected between ${opp.buyDex} and ${opp.sellDex}. Flash swap execution yields net profit after gas.`,
+        reasoning: `Live-data ${opp.spreadPct}% quoted spread detected between ${opp.buyDex} and ${opp.sellDex}. No flash-swap executor or realized-profit evidence is configured.`,
         aiSwarmRating: "HIGH CONVICTION (Score: 94/100) — Low risk flash swap route.",
         source: "BSC Multi-DEX Scanner",
         updatedAt: nowStr,
@@ -229,7 +201,7 @@ export async function fetchLiveAlphaRecommendations(): Promise<AlphaRecommendati
         expectedReturnUsd: expectedProfitUsd,
         expectedReturnBnb: expectedProfitBnb,
         reasoning: `Quantitative RSI (${rsi}) & EMA 9/21 cross indicator signal bullish momentum accumulation.`,
-        aiSwarmRating: `CONFIRMED (Score: ${conviction}/100) — Favorable Risk-to-Reward.`,
+        aiSwarmRating: `MODEL SCORE ${conviction}/100 — unverified signal, not an exchange fill or investment approval.`,
         source: "Binance Real-Time Stream",
         updatedAt: nowStr,
       });

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { 
   initialStocks, 
   initialTransactions, 
@@ -9,6 +8,7 @@ import {
 import { db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from "./firebase";
 import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { Stock, Transaction, Payout, UserSettings, SavedStrategy } from "./types";
+import { authenticatedApiFetch } from "./services/authenticatedApi";
 import PortfolioView from "./components/PortfolioView";
 import ScannerView from "./components/ScannerView";
 import AnalysisView from "./components/AnalysisView";
@@ -81,7 +81,15 @@ export default function App() {
 
   const [settings, setSettings] = useState<UserSettings>(() => {
     const saved = localStorage.getItem("divpro_settings");
-    return saved ? JSON.parse(saved) : initialSettings;
+    if (!saved) return initialSettings;
+    try {
+      const parsed = JSON.parse(saved) as UserSettings & { geminiApiKey?: unknown; alchemyApiKey?: unknown };
+      delete parsed.geminiApiKey;
+      delete parsed.alchemyApiKey;
+      return { ...initialSettings, ...parsed };
+    } catch {
+      return initialSettings;
+    }
   });
 
   const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>(() => {
@@ -116,9 +124,17 @@ export default function App() {
       setAuthUser(user);
       if (user) {
         localStorage.setItem("divpro_user_id", user.uid);
+      } else {
+        localStorage.removeItem("divpro_user_id");
       }
     });
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Remove legacy browser-managed Telegram credentials from prior releases.
+    localStorage.removeItem("divpro_tg_token");
+    localStorage.removeItem("divpro_tg_chat_id");
   }, []);
 
   const handleGoogleSignIn = async () => {
@@ -186,8 +202,9 @@ export default function App() {
 
   // Sync Transactions & Watchlist with Firebase Firestore
   useEffect(() => {
+    if (!authUser) return;
     try {
-      const unsubTransactions = onSnapshot(collection(db, "transactions"), (snapshot) => {
+      const unsubTransactions = onSnapshot(collection(db, "users", authUser.uid, "transactions"), (snapshot) => {
         const list: Transaction[] = [];
         snapshot.forEach((doc) => {
           list.push({ id: doc.id, ...doc.data() } as Transaction);
@@ -199,7 +216,7 @@ export default function App() {
         console.warn("Firestore sync failed or database offline, falling back to localStorage:", error);
       });
 
-      const unsubWatchlist = onSnapshot(doc(db, "settings", "watchlist"), (docSnap) => {
+      const unsubWatchlist = onSnapshot(doc(db, "users", authUser.uid, "settings", "watchlist"), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data && Array.isArray(data.items)) {
@@ -217,13 +234,13 @@ export default function App() {
     } catch (e) {
       console.warn("Firebase Firestore could not be initialized:", e);
     }
-  }, []);
+  }, [authUser]);
 
   const activeStock = stocks.find(s => s.symbol === selectedStockSymbol) || stocks[0];
 
   // Handler functions
   const handleAddTransaction = async (newTx: Omit<Transaction, "id">) => {
-    const txId = "tx-" + (transactions.length + 1);
+    const txId = `tx-${Date.now()}`;
     const tx: Transaction = {
       ...newTx,
       id: txId
@@ -233,7 +250,8 @@ export default function App() {
 
     // Save to Firestore
     try {
-      await setDoc(doc(db, "transactions", txId), {
+      if (!authUser) throw new Error("Sign in to synchronize transactions.");
+      await setDoc(doc(db, "users", authUser.uid, "transactions", txId), {
         type: tx.type,
         asset: tx.asset,
         date: tx.date,
@@ -282,7 +300,8 @@ export default function App() {
 
     // Save to Firestore
     try {
-      await setDoc(doc(db, "settings", "watchlist"), {
+      if (!authUser) throw new Error("Sign in to synchronize your watchlist.");
+      await setDoc(doc(db, "users", authUser.uid, "settings", "watchlist"), {
         items: nextWatchlist
       });
     } catch (e) {
@@ -312,49 +331,23 @@ export default function App() {
     setIsSendingToChat(true);
 
     try {
-      const clientKey = settings.geminiApiKey && settings.geminiApiKey.trim();
-      let replyText = "";
-
-      if (clientKey && !clientKey.startsWith("AIzaSyD-mock")) {
-        // Run completely client-side using user's custom API key
-        try {
-          const ai = new GoogleGenAI({ apiKey: clientKey });
-          const systemInstruction = "You are the Lumina Finance DividendPro AI Assistant. You help users analyze high-yield stock lists, calculate hypothetical compound growth of their portfolio ($482,910.42 yielding ~5%), identify potential dividend traps, and provide intelligent forecasting based on standard financial models. Keep answers clean, structured, and professional.";
-          
-          const chat = ai.chats.create({
-            model: "gemini-2.5-flash",
-            config: {
-              systemInstruction
-            }
-          });
-          
-          const response = await chat.sendMessage({ message: prompt });
-          replyText = response.text || "";
-        } catch (clientErr: any) {
-          console.error("Client-side chat failed:", clientErr);
-          throw new Error(`Client-side Gemini chat failed: ${clientErr.message || clientErr}`);
-        }
-      } else {
-        // Fallback to backend route
-        const response = await fetch("/api/gemini/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: prompt })
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || "Failed to reach AI server.");
-        }
+      const response = await authenticatedApiFetch("/api/gemini/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: prompt })
+      });
+      if (!response.ok) {
         const data = await response.json();
-        replyText = data.text || "";
+        throw new Error(data.error || "Failed to reach AI server.");
       }
+      const data = await response.json();
+      const replyText = data.text || "";
 
       setChatMessages(prev => [...prev, { sender: "bot", text: replyText }]);
     } catch (err: any) {
       console.error(err);
       setChatMessages(prev => [...prev, {
         sender: "bot",
-        text: `Connection failed: ${err.message || err}. Please check your internet connection or verify your GEMINI_API_KEY in Settings.`
+        text: `Connection failed: ${err.message || err}. Sign in and verify the server-side AI configuration.`
       }]);
     } finally {
       setIsSendingToChat(false);
@@ -655,7 +648,7 @@ export default function App() {
       {/* Main Body Content with Layout Constraints */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8 pb-24 md:pb-12">
         {activeView === "AlphaHub" && (
-          <QuantAlphaHub />
+          <QuantAlphaHub authUser={authUser} />
         )}
         {activeView === "Hummingbot" && (
           <HummingbotView />
@@ -725,7 +718,7 @@ export default function App() {
           />
         )}
         {activeView === "BSC" && (
-          <BSCWalletView settings={settings} />
+          <BSCWalletView />
         )}
         {activeView === "StrategyLab" && (
           <StrategyLabView />

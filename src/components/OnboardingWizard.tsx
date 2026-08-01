@@ -26,7 +26,7 @@ export default function OnboardingWizard({ isOpen, onClose, onSelectPersona }: O
       title: "DeFi Yield Farmer & Web3",
       icon: ShieldCheck,
       color: "border-purple-500/50 bg-purple-950/20 text-purple-400",
-      desc: "Monitor BSC token balances, auto-snipe mempool token launches, and audit DeFi liquidity pool yields."
+      desc: "Monitor BSC token balances, screen token risks, and review which execution paths have verifiable receipt evidence."
     },
     {
       id: "trader",

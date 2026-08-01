@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   checkHummingbotGatewayHealth,
-  getMockHummingbotBots,
   DEFAULT_LOCAL_GATEWAY_URL,
   CLOUD_RUN_GATEWAY_URL,
   HummingbotGatewayStatus,
   HummingbotBotStatus
 } from "../services/hummingbotService";
-import { notifyHummingbotProfit } from "../services/telegram";
 import {
   Bot, Cpu, Activity, RefreshCw, Zap, Shield, Play, Square,
   CheckCircle2, AlertTriangle, Layers, ArrowUpRight, Server, Terminal, Send
@@ -22,34 +20,6 @@ export default function HummingbotView() {
 
   useEffect(() => {
     handleCheckHealth();
-    setBots(getMockHummingbotBots());
-  }, []);
-
-  // Autonomous Hummingbot Profit Accumulation Loop & Telegram Dispatcher
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setBots(prev => prev.map(bot => {
-        if (bot.status === "RUNNING") {
-          const addedProfitUsd = parseFloat((Math.random() * 2.50 + 0.50).toFixed(2));
-          const addedProfitBnb = parseFloat((addedProfitUsd / 620).toFixed(4));
-          const newTotalUsd = parseFloat((bot.realizedPnlUsd + addedProfitUsd).toFixed(2));
-          const newTotalBnb = parseFloat((bot.realizedPnlBnb + addedProfitBnb).toFixed(4));
-          
-          // Dispatch Telegram Notification for positive profit!
-          notifyHummingbotProfit(bot.pair, bot.name, addedProfitUsd, addedProfitBnb, bot.primaryExchange);
-
-          return {
-            ...bot,
-            realizedPnlUsd: newTotalUsd,
-            realizedPnlBnb: newTotalBnb,
-            orderFillsCount: bot.orderFillsCount + 1
-          };
-        }
-        return bot;
-      }));
-    }, 12000);
-
-    return () => clearInterval(timer);
   }, []);
 
   const handleCheckHealth = async () => {
@@ -60,35 +30,21 @@ export default function HummingbotView() {
   };
 
   const handleToggleBot = (botId: string) => {
-    setBots(prev => prev.map(bot => {
-      if (bot.id === botId) {
-        const newStatus = bot.status === "RUNNING" ? "STOPPED" : "RUNNING";
-        setNotice(`Hummingbot bot "${bot.name}" is now ${newStatus}.`);
-        return { ...bot, status: newStatus };
-      }
-      return bot;
-    }));
+    const bot = bots.find(candidate => candidate.id === botId);
+    setNotice(
+      gatewayStatus?.connected
+        ? `No action sent for "${bot?.name ?? botId}": authenticated Hummingbot start/stop endpoints are not configured.`
+        : "No action sent: Hummingbot Gateway is offline or unverified.",
+    );
   };
 
   const handleLaunchStrategy = (name: string, strategyType: "CEX_DEX_ARBITRAGE" | "PURE_MARKET_MAKING" | "LIQUIDITY_MINING", pair: string, primaryExchange: string, secondaryExchange?: string) => {
-    const newBot: HummingbotBotStatus = {
-      id: `hb-bot-${Date.now()}`,
-      name,
-      strategyType,
-      pair,
-      primaryExchange,
-      secondaryExchange,
-      status: "RUNNING",
-      uptimeSeconds: 10,
-      totalVolumeUsd: 250.00,
-      realizedPnlUsd: 4.50,
-      realizedPnlBnb: 0.0072,
-      orderFillsCount: 2,
-      createdAt: new Date().toLocaleTimeString()
-    };
-
-    setBots(prev => [newBot, ...prev]);
-    setNotice(`Successfully launched new Hummingbot strategy "${name}"!`);
+    void strategyType; void pair; void primaryExchange; void secondaryExchange;
+    setNotice(
+      gatewayStatus?.connected
+        ? `Strategy "${name}" was not launched: authenticated Hummingbot create/start endpoints are not configured yet.`
+        : `Strategy "${name}" was not launched: the Hummingbot Gateway is offline or unverified.`,
+    );
   };
 
   return (
@@ -152,7 +108,7 @@ export default function HummingbotView() {
             color: gatewayStatus?.connected ? "#10b981" : "#f59e0b",
             padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 900
           }}>
-            {gatewayStatus?.connected ? `🟢 CONNECTED (${gatewayStatus.latencyMs}ms)` : `⚡ GATEWAY READY (Simulated REST Endpoint)`}
+            {gatewayStatus?.connected ? `🟢 HEALTH ENDPOINT REACHABLE (${gatewayStatus.latencyMs}ms)` : "🔴 GATEWAY OFFLINE / UNVERIFIED"}
           </span>
         </div>
 
@@ -223,38 +179,38 @@ export default function HummingbotView() {
             <Shield size={24} color="#10b981" />
             <div>
               <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
-                Lumina Hummingbot Winning Protection Matrix
+                Proposed Hummingbot Risk-Control Specification
               </h3>
               <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
-                5 Active Risk Control Layers Enforced on CEX ↔ DEX Arbitrage
+                Design targets only; no authenticated execution adapter is deployed
               </p>
             </div>
           </div>
           <span style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 900 }}>
-            🛡️ ALL 5 LAYERS ACTIVE
+            NOT ACTIVE
           </span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
           <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
             <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 1: Atomic Hedging</div>
-            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Simultaneous CEX + DEX fills; 0 unhedged market risk.</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Target: reconcile both CEX and DEX fills before reporting a hedge.</div>
           </div>
           <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
             <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 2: Min Spread (≥1.2%)</div>
-            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Fires ONLY when price gap covers all CEX/DEX fees.</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Target: reject opportunities whose quoted spread does not cover estimated fees.</div>
           </div>
           <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
             <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 3: Gas Shield (1.5x)</div>
-            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Rejects mainnet DEX trade if profit &lt; 1.5x gas fee.</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Target: reject execution unless estimated margin exceeds 1.5x gas.</div>
           </div>
           <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
             <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 4: 85%+ Win Baseline</div>
-            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Requires 85%+ accuracy in paper mode before mainnet.</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Target: require independently verified paper results before mainnet review.</div>
           </div>
           <div style={{ background: "#1e293b", padding: "12px 14px", borderRadius: "12px" }}>
-            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 5: Telegram Profit Push</div>
-            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Instant phone alert dispatched on every positive gain!</div>
+            <div style={{ fontSize: "11px", color: "#10b981", fontWeight: 800 }}>Layer 5: Verified Fill Notification</div>
+            <div style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "4px" }}>Target: notify only after a receipt or exchange fill is reconciled server-side.</div>
           </div>
         </div>
       </div>
@@ -265,7 +221,7 @@ export default function HummingbotView() {
         borderRadius: "20px", padding: "22px", display: "flex", flexDirection: "column", gap: "16px"
       }}>
         <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#f8fafc", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-          📊 Revenue Generation System Comparison & Funding Playbook
+          📊 Execution-System Readiness Comparison
         </h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
@@ -278,9 +234,9 @@ export default function HummingbotView() {
             </div>
             <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: "1.5", margin: 0 }}>
               <strong>Mechanism</strong>: Direct PancakeSwap DEX Swaps & Token Launch Sniping.<br/>
-              <strong>Win Probability</strong>: High (85%+ Win-Rate Safety Trigger).<br/>
-              <strong>Funding Steps</strong>: Deposit 0.02 BNB + $15 USDT into <code>0x71C7...8976F</code>.<br/>
-              <strong>Why Fund First</strong>: Zero CEX API key setup friction. Instant yield captures high DEX momentum. Profits earned here can fund System 2!
+              <strong>Current readiness</strong>: Paper strategies plus one wallet-signed, receipt-verified USDT transfer path.<br/>
+              <strong>Funding warning</strong>: Do not fund an address based on this screen. Verify every destination in the connected wallet.<br/>
+              <strong>Next gate</strong>: Add a router-specific receipt reconciler before enabling any trading action.
             </p>
           </div>
 
@@ -292,9 +248,9 @@ export default function HummingbotView() {
             </div>
             <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: "1.5", margin: 0 }}>
               <strong>Mechanism</strong>: Orderbook Market Making & CEX/DEX Spread Arbitrage.<br/>
-              <strong>Win Probability</strong>: High / Market-Neutral (0 directional risk).<br/>
-              <strong>Funding Steps</strong>: Deposit USDT on Binance + BNB/USDT in BSC Wallet.<br/>
-              <strong>Why Fund Second</strong>: Requires Binance API keys + dual-exchange setup. Fund from System 1 profits to build a standing 24/7 cloud yield engine!
+              <strong>Current readiness</strong>: Health probe only; authenticated create/start/stop and exchange-fill endpoints are not configured.<br/>
+              <strong>Funding warning</strong>: Do not deposit funds for this integration yet.<br/>
+              <strong>Next gate</strong>: Deploy private credentials and reconcile each exchange fill and chain leg.
             </p>
           </div>
         </div>
@@ -316,7 +272,7 @@ export default function HummingbotView() {
                 <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>CEX ↔ DEX Arbitrage</h3>
               </div>
               <p style={{ fontSize: "12px", color: "#94a3b8", lineHeight: 1.4, margin: 0 }}>
-                Scans orderbook prices on Binance CEX against AMM liquidity pools on PancakeSwap v2, executing instant riskless spread arbitrage.
+                Proposed Binance/PancakeSwap spread strategy. It is not launchable until authenticated execution and dual-leg reconciliation are configured.
               </p>
             </div>
 
@@ -328,7 +284,7 @@ export default function HummingbotView() {
                 fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
               }}
             >
-              <Play size={14} /> Launch CEX ↔ DEX Arbitrage Bot
+              <Play size={14} /> Check Strategy Availability
             </button>
           </div>
 
@@ -340,7 +296,7 @@ export default function HummingbotView() {
                 <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", margin: 0 }}>Pure Market Making Grid</h3>
               </div>
               <p style={{ fontSize: "12px", color: "#94a3b8", lineHeight: 1.4, margin: 0 }}>
-                Automatically posts continuous bid/ask limit orders around target mid-price using Avellaneda-Stoikov inventory control model.
+                Proposed Avellaneda-Stoikov market-making strategy. No exchange order endpoint is currently connected.
               </p>
             </div>
 
@@ -352,7 +308,7 @@ export default function HummingbotView() {
                 fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
               }}
             >
-              <Play size={14} /> Launch Market Making Grid Bot
+              <Play size={14} /> Check Strategy Availability
             </button>
           </div>
 

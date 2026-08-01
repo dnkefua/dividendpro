@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createChart, ColorType, LineSeries } from "lightweight-charts";
-import { GoogleGenAI } from "@google/genai";
 import { Stock, Transaction, UserSettings, CandleBar } from "../types";
+import { authenticatedApiFetch } from "../services/authenticatedApi";
 import { 
   Sparkles, 
   TrendingUp, 
@@ -438,45 +438,12 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
     }
 
     try {
-      let data;
-      const clientKey = settings.geminiApiKey && settings.geminiApiKey.trim();
-      
-      if (clientKey && !clientKey.startsWith("AIzaSyD-mock")) {
-        // Run completely client-side using user's custom API key
-        try {
-          const ai = new GoogleGenAI({ apiKey: clientKey });
-          const response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: `You are an AI investment committee. Evaluate the following trading strategy for the asset "${selectedSymbol || "General Market"}":
-Strategy prompt: "${vibePrompt}"
-
-Provide your response in raw JSON format with the following exact keys:
-{
-  "macro": "Detailed macro analyst perspective on pros/cons of this setup",
-  "bear": "Detailed short-seller/bear perspective highlighting pitfalls, resistance, or market headwinds",
-  "risk": "Detailed risk manager perspective suggesting position sizes, stop loss distance, and risk parameters",
-  "consensus": "Summary consensus recommendation",
-  "score": 65 // an integer vibe rating from 1 to 100
-}
-Do not return any markdown formatting or extra text, just the raw JSON.`,
-          });
-          const text = response.text || "";
-          const jsonText = text.replace(/```json|```/g, "").trim();
-          data = JSON.parse(jsonText);
-        } catch (clientErr: any) {
-          console.error("Client-side Gemini call failed:", clientErr);
-          throw new Error(`Client-side Gemini call failed: ${clientErr.message || clientErr}`);
-        }
-      } else {
-        // Fallback to backend route
-        const response = await fetch("/api/vibe/debate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: vibePrompt, symbol: selectedSymbol })
-        });
-        if (!response.ok) throw new Error(`Debate endpoint returned ${response.status}`);
-        data = await response.json();
-      }
+      const response = await authenticatedApiFetch("/api/vibe/debate", {
+        method: "POST",
+        body: JSON.stringify({ prompt: vibePrompt, symbol: selectedSymbol })
+      });
+      if (!response.ok) throw new Error(`Debate endpoint returned ${response.status}`);
+      const data = await response.json();
 
       setDebateResult(data);
       

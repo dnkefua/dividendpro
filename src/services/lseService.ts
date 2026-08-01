@@ -7,17 +7,6 @@
  * Candles  : 14 resolutions — 1s, 1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M
  */
 
-const LSE_BASE = "https://api.londonstrategicedge.com/vault";
-const LSE_WS   = "wss://data-ws.londonstrategicedge.com";
-
-function getKey(): string {
-  return (import.meta.env.VITE_LSE_API_KEY as string) || "";
-}
-
-function headers(): Record<string, string> {
-  return { "x-api-key": getKey(), "Content-Type": "application/json" };
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface LSECandle {
@@ -27,6 +16,7 @@ export interface LSECandle {
   low: number;
   close: number;
   volume: number;
+  environment: "LIVE_DATA" | "SIMULATION";
 }
 
 export type LSETimeframe = "1m" | "5m" | "15m" | "1h" | "4h" | "1d" | "1w";
@@ -46,27 +36,7 @@ export async function fetchCandles(
   end?: string,
   limit = 5000
 ): Promise<LSECandle[]> {
-  // 1. Try LSE Vault API if API key exists
-  const apiKey = getKey();
-  if (apiKey) {
-    try {
-      const params = new URLSearchParams({
-        symbol,
-        timeframe,
-        start,
-        limit: String(limit),
-        order: "asc",
-      });
-      if (end) params.set("end", end);
-
-      const res = await fetch(`${LSE_BASE}/candles?${params}`, { headers: headers() });
-      if (res.ok) {
-        return (await res.json()) as LSECandle[];
-      }
-    } catch {
-      /* fallback below */
-    }
-  }
+  void start; void end; void limit;
 
   // 2. Binance API Live Data Fallback for Crypto Pairs (e.g. BTC/USD -> BTCUSDT)
   const cleanSym = symbol.toUpperCase().replace("/", "").replace("-USD", "");
@@ -85,6 +55,7 @@ export async function fetchCandles(
         low: parseFloat(k[3]),
         close: parseFloat(k[4]),
         volume: parseFloat(k[5]),
+        environment: "LIVE_DATA",
       }));
     }
   } catch (err) {
@@ -104,6 +75,7 @@ export async function fetchCandles(
           low: c.low,
           close: c.close,
           volume: c.volume || 10000,
+          environment: "LIVE_DATA",
         }));
       }
     }
@@ -125,7 +97,7 @@ export async function fetchCandles(
     const high = Math.max(open, close) + Math.random() * (basePrice * 0.008);
     const low = Math.min(open, close) - Math.random() * (basePrice * 0.008);
     const volume = Math.floor(Math.random() * 50000) + 5000;
-    candles.push({ time: t, open, high, low, close, volume });
+    candles.push({ time: t, open, high, low, close, volume, environment: "SIMULATION" });
     basePrice = close;
   }
   return candles;
@@ -134,13 +106,6 @@ export async function fetchCandles(
 // ── Catalog ───────────────────────────────────────────────────────────────────
 
 export async function fetchCatalog(): Promise<Array<{ symbol: string; dataset: string; timeframes: string[] }>> {
-  const apiKey = getKey();
-  if (apiKey) {
-    try {
-      const res = await fetch(`${LSE_BASE}/catalog`, { headers: headers() });
-      if (res.ok) return (await res.json()) as Array<{ symbol: string; dataset: string; timeframes: string[] }>;
-    } catch {}
-  }
   return [
     { symbol: "BTC/USD", dataset: "Binance Spot", timeframes: ["1m", "5m", "15m", "1h", "4h", "1d"] },
     { symbol: "ETH/USD", dataset: "Binance Spot", timeframes: ["1m", "5m", "15m", "1h", "4h", "1d"] },
@@ -153,14 +118,7 @@ export async function fetchCatalog(): Promise<Array<{ symbol: string; dataset: s
 // ── Usage ─────────────────────────────────────────────────────────────────────
 
 export async function fetchUsage(): Promise<LSEUsage> {
-  const apiKey = getKey();
-  if (apiKey) {
-    try {
-      const res = await fetch(`${LSE_BASE}/usage`, { headers: headers() });
-      if (res.ok) return (await res.json()) as LSEUsage;
-    } catch {}
-  }
-  return { calls_per_minute: 24, monthly_bytes_used: 1048576, monthly_bytes_limit: 1073741824 };
+  return { calls_per_minute: 0, monthly_bytes_used: 0, monthly_bytes_limit: 0 };
 }
 
 // ── WebSocket live stream ─────────────────────────────────────────────────────
@@ -364,6 +322,8 @@ export interface BacktestTrade {
 }
 
 export interface BacktestResult {
+  environment: "SIMULATION";
+  dataEnvironment: "LIVE_DATA" | "SIMULATION";
   strategy: string;
   symbol: string;
   timeframe: string;
@@ -490,6 +450,8 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
   const sharpe = stdReturn > 0 ? (avgReturn / stdReturn) * Math.sqrt(252) : 0;
 
   return {
+    environment: "SIMULATION",
+    dataEnvironment: candles[0]?.environment || "SIMULATION",
     strategy: config.strategy.name,
     symbol: config.symbol,
     timeframe: config.timeframe,
@@ -508,8 +470,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
   };
 }
 
-// ── Pre-built winning strategies ──────────────────────────────────────────────
-// These are empirically sound strategies for crypto/BSC tokens
+// ── Example strategy definitions for paper backtesting ───────────────────────
 
 export const STRATEGIES: StrategyDefinition[] = [
   {

@@ -1,12 +1,19 @@
 {
   "hosting": {
-    "public": "dist",
+    "public": "dist/client",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "dividendpro-app",
+          "region": "us-east4"
+        }
+      },
       {
         "source": "**",
         "destination": "/index.html"

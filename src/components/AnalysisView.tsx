@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createChart, ColorType, AreaSeries, LineSeries } from "lightweight-charts";
 import { Stock, Transaction, UserSettings } from "../types";
+import { authenticatedApiFetch } from "../services/authenticatedApi";
 import { getAssetColor, formatCurrency } from "../utils";
 import { 
   TrendingUp, 
@@ -188,9 +189,8 @@ export default function AnalysisView({
     setIsLoadingAi(true);
     setAiError("");
     try {
-      const response = await fetch("/api/gemini/analyze", {
+      const response = await authenticatedApiFetch("/api/gemini/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symbol: stock.symbol,
           name: stock.name,
@@ -217,7 +217,7 @@ export default function AnalysisView({
       }
     } catch (err: any) {
       console.error(err);
-      setAiError("Connection to the server failed. Make sure your GEMINI_API_KEY is configured.");
+      setAiError("Connection to the authenticated AI service failed. Sign in and verify server configuration.");
     } finally {
       setIsLoadingAi(false);
     }
@@ -316,7 +316,7 @@ export default function AnalysisView({
                 title="Toggle 10-Year Treasury Yield Macro Overlay"
               >
                 <Layers size={14} />
-                {overlayActive ? "Overlay Active" : "Add Macro Overlay"}
+                {overlayActive ? "Simulated Overlay Active" : "Add Simulated Macro Overlay"}
               </button>
             </h3>
             <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl hidden sm:flex">
@@ -545,7 +545,7 @@ export default function AnalysisView({
               <div className="flex flex-col items-center justify-center text-center py-6 text-red-600 space-y-2">
                 <AlertTriangle className="w-8 h-8 text-error" />
                 <p className="font-semibold">{aiError}</p>
-                <p className="text-xs text-on-surface-variant">Configure process.env.GEMINI_API_KEY in secrets menu to activate.</p>
+                <p className="text-xs text-on-surface-variant">Sign in to use the server-managed AI service. Browser API keys are not accepted.</p>
               </div>
             ) : (
               <div className="space-y-4 whitespace-pre-wrap text-primary" id="ai-report-content">

@@ -7,8 +7,9 @@ EXPOSE 15888
 
 # Environment variables for Cloud Run
 ENV PORT=8080
-ENV CONFIG_PASSWORD=LuminaQuantPassword2026!
 ENV ALLOW_TELEMETRY=false
+
+# CONFIG_PASSWORD must be injected from Secret Manager at deployment time.
 
 # Start Hummingbot Gateway REST Server
 CMD ["python3", "bin/hummingbot.py", "--gateway"]

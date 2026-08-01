@@ -12,6 +12,7 @@ export interface HummingbotGatewayStatus {
   latencyMs: number;
   activeBotsCount: number;
   lastPing: string;
+  error?: string;
 }
 
 export interface HummingbotBotStatus {
@@ -35,77 +36,46 @@ export const CLOUD_RUN_GATEWAY_URL = "https://hummingbot-gateway-dividendpro.run
 
 export async function checkHummingbotGatewayHealth(
   url: string = DEFAULT_LOCAL_GATEWAY_URL,
-  forceConnected: boolean = false
 ): Promise<HummingbotGatewayStatus> {
   const startTime = Date.now();
-  if (forceConnected) {
-    return {
-      connected: true,
-      gatewayUrl: url,
-      version: "v1.28.0-gateway (Bridge Active)",
-      latencyMs: 18,
-      activeBotsCount: 2,
-      lastPing: new Date().toLocaleTimeString()
-    };
-  }
-
   try {
     const res = await fetch(`${url}/health`, { method: "GET" });
     const latencyMs = Date.now() - startTime;
     if (res.ok) {
+      const data = await res.json().catch(() => null) as {
+        version?: unknown;
+        activeBotsCount?: unknown;
+      } | null;
       return {
         connected: true,
         gatewayUrl: url,
-        version: "v1.28.0-gateway",
+        version: typeof data?.version === "string" ? data.version : "not reported",
         latencyMs,
-        activeBotsCount: 2,
+        activeBotsCount: typeof data?.activeBotsCount === "number" && Number.isFinite(data.activeBotsCount)
+          ? data.activeBotsCount
+          : 0,
         lastPing: new Date().toLocaleTimeString()
       };
     }
-  } catch {
-    /* Fallback connected bridge */
+  } catch (error) {
+    return {
+      connected: false,
+      gatewayUrl: url,
+      version: "unavailable",
+      latencyMs: Date.now() - startTime,
+      activeBotsCount: 0,
+      lastPing: new Date().toLocaleTimeString(),
+      error: error instanceof Error ? error.message : "Gateway health check failed",
+    };
   }
 
   return {
-    connected: true,
+    connected: false,
     gatewayUrl: url,
-    version: "v1.28.0-gateway (REST Bridge Active)",
-    latencyMs: 14,
-    activeBotsCount: 2,
-    lastPing: new Date().toLocaleTimeString()
+    version: "unavailable",
+    latencyMs: Date.now() - startTime,
+    activeBotsCount: 0,
+    lastPing: new Date().toLocaleTimeString(),
+    error: "Gateway returned a non-success health response",
   };
-}
-
-export function getMockHummingbotBots(): HummingbotBotStatus[] {
-  return [
-    {
-      id: "hb-bot-1",
-      name: "Binance ↔ PancakeSwap Arbitrage",
-      strategyType: "CEX_DEX_ARBITRAGE",
-      pair: "CAKE/WBNB",
-      primaryExchange: "Binance CEX",
-      secondaryExchange: "PancakeSwap v2",
-      status: "RUNNING",
-      uptimeSeconds: 14200,
-      totalVolumeUsd: 12450.00,
-      realizedPnlUsd: 84.50,
-      realizedPnlBnb: 0.1363,
-      orderFillsCount: 48,
-      createdAt: new Date(Date.now() - 14200000).toLocaleTimeString()
-    },
-    {
-      id: "hb-bot-2",
-      name: "BNB/USDT Pure Market Maker",
-      strategyType: "PURE_MARKET_MAKING",
-      pair: "BNB/USDT",
-      primaryExchange: "Binance CEX",
-      status: "RUNNING",
-      uptimeSeconds: 8400,
-      totalVolumeUsd: 8900.00,
-      realizedPnlUsd: 42.20,
-      realizedPnlBnb: 0.0680,
-      orderFillsCount: 31,
-      createdAt: new Date(Date.now() - 8400000).toLocaleTimeString()
-    }
-  ];
 }

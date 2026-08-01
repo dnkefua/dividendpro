@@ -1,17 +1,10 @@
-// Alchemy JSON-RPC service for Binance Smart Chain
-// Uses raw fetch (no SDK) since alchemy-sdk is deprecated
+// Public, read-only JSON-RPC service for Binance Smart Chain.
+// No browser API key or secret is accepted.
 
 const BSC_RPC_FALLBACK = "https://bsc-dataseed1.binance.org/";
 
-function getAlchemyUrl(apiKey: string): string {
-  if (!apiKey || apiKey.trim() === "") return BSC_RPC_FALLBACK;
-  // BNB Smart Chain Mainnet (Chain ID 56) — NOT opBNB which is a separate L2
-  return `https://bnb-mainnet.g.alchemy.com/v2/${apiKey}`;
-}
-
-async function rpcCall(apiKey: string, method: string, params: unknown[]): Promise<unknown> {
-  const url = getAlchemyUrl(apiKey);
-  const res = await fetch(url, {
+async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
+  const res = await fetch(BSC_RPC_FALLBACK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
@@ -31,32 +24,28 @@ export interface RawTokenBalance {
 }
 
 export async function getTokenBalances(
-  apiKey: string,
   address: string
 ): Promise<RawTokenBalance[]> {
-  try {
-    const result = await rpcCall(apiKey, "alchemy_getTokenBalances", [address, "erc20"]) as {
-      tokenBalances: RawTokenBalance[];
-    };
-    return result.tokenBalances || [];
-  } catch {
-    return [];
-  }
+  void address;
+  return [];
 }
 
 export async function getSpecificTokenBalances(
-  apiKey: string,
   address: string,
   contracts: string[]
 ): Promise<RawTokenBalance[]> {
-  try {
-    const result = await rpcCall(apiKey, "alchemy_getTokenBalances", [address, contracts]) as {
-      tokenBalances: RawTokenBalance[];
-    };
-    return result.tokenBalances || [];
-  } catch {
-    return [];
-  }
+  const paddedAddress = address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  return Promise.all(contracts.map(async contractAddress => {
+    try {
+      const tokenBalance = await rpcCall("eth_call", [
+        { to: contractAddress, data: `0x70a08231${paddedAddress}` },
+        "latest",
+      ]) as string;
+      return { contractAddress, tokenBalance: tokenBalance || "0x0" };
+    } catch (error) {
+      return { contractAddress, tokenBalance: "0x0", error: error instanceof Error ? error.message : "RPC read failed" };
+    }
+  }));
 }
 
 // ── Token Metadata ──────────────────────────────────────────────────────────
@@ -69,15 +58,10 @@ export interface TokenMetadata {
 }
 
 export async function getTokenMetadata(
-  apiKey: string,
   contractAddress: string
 ): Promise<TokenMetadata | null> {
-  try {
-    const result = await rpcCall(apiKey, "alchemy_getTokenMetadata", [contractAddress]) as TokenMetadata;
-    return result;
-  } catch {
-    return null;
-  }
+  void contractAddress;
+  return null;
 }
 
 // ── Asset Transfers (TX History) ────────────────────────────────────────────
@@ -94,37 +78,20 @@ export interface AssetTransfer {
 }
 
 export async function getAssetTransfers(
-  apiKey: string,
   address: string,
   direction: "from" | "to" = "from"
 ): Promise<AssetTransfer[]> {
-  try {
-    const params = {
-      fromBlock: "0x0",
-      toBlock: "latest",
-      category: ["erc20", "external"],
-      withMetadata: true,
-      excludeZeroValue: true,
-      maxCount: "0x14", // 20 transfers
-      ...(direction === "from" ? { fromAddress: address } : { toAddress: address }),
-    };
-    const result = await rpcCall(apiKey, "alchemy_getAssetTransfers", [params]) as {
-      transfers: AssetTransfer[];
-    };
-    return result.transfers || [];
-  } catch {
-    return [];
-  }
+  void address; void direction;
+  return [];
 }
 
 // ── Native BNB Balance ──────────────────────────────────────────────────────
 
 export async function getNativeBNBBalance(
-  apiKey: string,
   address: string
 ): Promise<string> {
   try {
-    const result = await rpcCall(apiKey, "eth_getBalance", [address, "latest"]) as string;
+    const result = await rpcCall("eth_getBalance", [address, "latest"]) as string;
     return result; // hex string
   } catch {
     return "0x0";
@@ -225,7 +192,7 @@ export async function checkHoneypot(contractAddress: string): Promise<{
     const res = await fetch(
       `https://api.honeypot.is/v2/IsHoneypot?address=${contractAddress}&chainID=56`
     );
-    if (!res.ok) return { isHoneypot: false, buyTax: 0, sellTax: 0 };
+    if (!res.ok) return { isHoneypot: false, buyTax: 0, sellTax: 0, error: `Safety API returned ${res.status}` };
     const data = await res.json() as {
       honeypotResult?: { isHoneypot?: boolean };
       simulationResult?: { buyTax?: number; sellTax?: number };
@@ -283,6 +250,7 @@ export interface DexArbitrageOpportunity {
   estimatedProfitUsd: number;
   gasCostBnb: number;
   route: string[];
+  environment: "LIVE_DATA" | "SIMULATION";
 }
 
 const TOKEN_CONTRACT_MAP: Record<string, string> = {
@@ -342,6 +310,7 @@ export async function scanDexArbitrage(
               estimatedProfitUsd: parseFloat(netProfitUsd.toFixed(2)),
               gasCostBnb,
               route: [dexNameMap[cheapestPair.dexId] || "PancakeSwap v2", "WBNB Router", dexNameMap[highestPair.dexId] || "Biswap"],
+              environment: "LIVE_DATA",
             }
           ];
         }
@@ -386,6 +355,7 @@ export async function scanDexArbitrage(
       estimatedProfitUsd: parseFloat(netProfitUsd.toFixed(2)),
       gasCostBnb,
       route: [s.buyDex, "WBNB Router", s.sellDex],
+      environment: "SIMULATION",
     };
   });
 }
@@ -397,10 +367,10 @@ export interface TokenSecurityReport {
   isHoneypot: boolean;
   buyTaxPct: number;
   sellTaxPct: number;
-  isMintable: boolean;
-  isProxy: boolean;
-  liquidityLockedPct: number;
-  renouncedOwnership: boolean;
+  isMintable: boolean | null;
+  isProxy: boolean | null;
+  liquidityLockedPct: number | null;
+  renouncedOwnership: boolean | null;
   safetyScore: number; // 0 to 100
   riskFlags: string[];
 }
@@ -409,11 +379,13 @@ export async function auditTokenSecurity(contractAddress: string): Promise<Token
   const hp = await checkHoneypot(contractAddress);
   
   const flags: string[] = [];
+  if (hp.error) flags.push(`Safety oracle unavailable: ${hp.error}`);
   if (hp.isHoneypot) flags.push("HONEYPOT DETECTED: Sell transactions will fail!");
   if (hp.buyTax > 10) flags.push(`High Buy Tax (${hp.buyTax}%)`);
   if (hp.sellTax > 10) flags.push(`High Sell Tax (${hp.sellTax}%)`);
 
   let safetyScore = 100;
+  if (hp.error) safetyScore = 0;
   if (hp.isHoneypot) safetyScore -= 90;
   if (hp.buyTax > 10) safetyScore -= 20;
   if (hp.sellTax > 10) safetyScore -= 20;
@@ -423,11 +395,12 @@ export async function auditTokenSecurity(contractAddress: string): Promise<Token
     isHoneypot: hp.isHoneypot,
     buyTaxPct: hp.buyTax,
     sellTaxPct: hp.sellTax,
-    isMintable: false,
-    isProxy: false,
-    liquidityLockedPct: hp.isHoneypot ? 0 : 95,
-    renouncedOwnership: !hp.isHoneypot,
-    safetyScore: Math.max(5, safetyScore),
+    // The current oracle does not prove these contract properties.
+    isMintable: null,
+    isProxy: null,
+    liquidityLockedPct: null,
+    renouncedOwnership: null,
+    safetyScore: hp.error ? 0 : Math.max(5, safetyScore),
     riskFlags: flags.length > 0 ? flags : ["No critical security risks identified."],
   };
 }

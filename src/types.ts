@@ -52,8 +52,6 @@ export interface UserSettings {
   isPro: boolean;
   portfolioBudget: number;
   currency: string;
-  geminiApiKey?: string;
-  alchemyApiKey?: string;
 }
 
 export interface SavedStrategy {
