@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { Interface, Wallet, getAddress, parseUnits, verifyMessage } from "ethers";
 import { BSC_USDT_ADDRESS, hasMatchingUsdtTransfer } from "../server/truthLayer";
+import { isFinalizedReceiptReconciledProfit } from "../server/mevExecution";
 import { executeAlphaTrade, type AlphaRecommendation } from "../src/services/quantAlphaEngine";
 import { buildSettlementOwnershipMessage } from "../src/shared/settlementEvidence";
 
@@ -67,10 +68,38 @@ test("browser Telegram dispatch remains revoked and synthetic profit templates s
   const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
   const telegramSource = readFileSync(new URL("../src/services/telegram.ts", import.meta.url), "utf8");
   const alphaSource = readFileSync(new URL("../src/components/QuantAlphaHub.tsx", import.meta.url), "utf8");
+  const executionSource = readFileSync(new URL("../server/mevExecution.ts", import.meta.url), "utf8");
+  const truthLayerSource = readFileSync(new URL("../server/truthLayer.ts", import.meta.url), "utf8");
 
   assert.match(appSource, /CLIENT_TELEGRAM_DISPATCH_REVOKED/);
   assert.doesNotMatch(telegramSource, /api\.telegram\.org\/bot|VITE_TELEGRAM_BOT_TOKEN/);
+  assert.doesNotMatch(`${telegramSource}\n${truthLayerSource}`, /api\/notifications\/telegram|paper_alpha_trade|testTelegramConnection|notifyPaperAlphaTrade/);
   assert.doesNotMatch(alphaSource, /AUTONOMOUS BOT TRADE EXECUTED|NET REALIZED PROFIT|sendTelegramMessage/);
+  assert.doesNotMatch(`${executionSource}\n${truthLayerSource}`, /MEV_EXECUTION_PRIVATE_KEY|new Wallet\(/);
+  assert.match(`${executionSource}\n${truthLayerSource}`, /MEV_KMS_KEY_VERSION/);
+  assert.match(truthLayerSource, /getBlock\("finalized"\)/);
+});
+
+test("Telegram profit eligibility requires consistent finalized receipt evidence", () => {
+  const evidence = {
+    terminalState: "FINALIZED_PROFIT",
+    txHash: `0x${"12".repeat(32)}`,
+    includedBlockNumber: 100,
+    includedBlockHash: `0x${"34".repeat(32)}`,
+    finalizedBlockNumber: 102,
+    finalizedBlockHash: `0x${"56".repeat(32)}`,
+    realizedProfitBaseUnits: "1000",
+    error: null,
+  };
+  assert.equal(isFinalizedReceiptReconciledProfit({ canonical: evidence, regional: [evidence, { ...evidence }] }), true);
+  assert.equal(isFinalizedReceiptReconciledProfit({
+    canonical: evidence,
+    regional: [evidence, { ...evidence, terminalState: "EVIDENCE_MISMATCH" }],
+  }), false);
+  assert.equal(isFinalizedReceiptReconciledProfit({
+    canonical: evidence,
+    regional: [{ ...evidence, finalizedBlockHash: null }],
+  }), false);
 });
 
 test("settlement ownership proof binds Firebase uid and receipt fields to the sender wallet", async () => {

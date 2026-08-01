@@ -13,7 +13,7 @@ Provide one verifiable end-to-end financial execution path while preventing any 
 5. The client waits for a status-1 transaction receipt.
 6. After the receipt, the wallet signs a gas-free EIP-191 evidence statement containing the Firebase UID and exact settlement fields.
 7. The authenticated backend verifies that wallet proof and independently retrieves the receipt and transaction from BSC RPC.
-8. The backend verifies chain, sender, token contract, recipient, amount, and exact `Transfer` event.
+8. The backend verifies chain, sender, token contract, recipient, amount, exact `Transfer` event, and that the receipt block is at or below BSC's reported finalized block.
 9. Firebase Admin writes evidence to `users/{uid}/settlements/{txHash}`.
 10. Only after the evidence write succeeds does the UI show `VERIFIED_ON_CHAIN`.
 11. Telegram sends a server-side verified notification with the immutable BscScan link.
@@ -46,10 +46,13 @@ Required production environment variables:
 - `TELEGRAM_CHAT_ID=<Secret Manager reference>`
 - `MEV_SERVICE_TOKEN=<Secret Manager reference>`
 - `MEV_EXECUTOR_INTERNAL_TOKEN=<Secret Manager reference>`
-- `MEV_EXECUTION_PRIVATE_KEY=<Secret Manager reference after authorization>`
+- `MEV_KMS_KEY_VERSION=<non-secret Cloud KMS key-version resource name>`
+- `MEV_EXECUTION_SIGNER_ADDRESS=<KMS-derived public BSC address>`
 - `MEV_ORCHESTRATOR_URLS_JSON=<private regional worker endpoints>`
 
 Never use `VITE_` for server secrets. Vite is explicitly restricted to public Firebase metadata and the base path.
+The execution private key is HSM-backed and non-exportable. Cloud Run has only
+`roles/cloudkms.signerVerifier` on the specific production signing key.
 
 ## Security rules
 

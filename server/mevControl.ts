@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { applicationDefault, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { configuredKmsSigner } from "./kmsEvmSigner";
 import { authenticateFirebaseRequest } from "./truthLayer";
 
 type WorkerConfig = { region: string; url: string };
@@ -103,14 +104,17 @@ async function deploymentReadinessPassed(): Promise<boolean> {
   if (!workersReady || process.env.MEV_LIVE_EXECUTION_ENABLED !== "true") return false;
 
   const executor = process.env.MEV_EXECUTOR_ADDRESS || "";
-  const signer = process.env.MEV_EXECUTION_PRIVATE_KEY || "";
   const serverConfigReady = /^0x[0-9a-fA-F]{40}$/.test(executor)
-    && /^0x[0-9a-fA-F]{64}$/.test(signer)
     && Boolean(process.env.MEV_ROUTER_ALLOWLIST)
     && Boolean(process.env.MEV_TOKEN_ALLOWLIST)
     && Boolean(process.env.MEV_PROFIT_RECIPIENT_ALLOWLIST)
     && Boolean(process.env.MEV_EXECUTOR_INTERNAL_TOKEN);
   if (!serverConfigReady) return false;
+  try {
+    await configuredKmsSigner().getAddress();
+  } catch {
+    return false;
+  }
   const [chainId, bytecode] = await Promise.all([
     rpcValue("eth_chainId", []),
     rpcValue("eth_getCode", [executor, "latest"]),

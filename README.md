@@ -10,7 +10,7 @@ DividendPro is an AI-assisted dividend research, portfolio, and Web3 execution w
 - The implemented settlement-verification path covers a non-custodial BSC USDT
   transfer signed in the user's wallet; it is not claimed production-verified
   until a funded receipt smoke is completed.
-- Settlement success requires a wallet ownership proof, a status-1 receipt, and an exact canonical USDT `Transfer(from,to,value)` event.
+- Settlement success requires a wallet ownership proof, a status-1 receipt, an exact canonical USDT `Transfer(from,to,value)` event, and inclusion at or below BSC's reported finalized block.
 - The backend verifies Firebase identity and writes immutable evidence to `users/{uid}/settlements/{txHash}`.
 - Gemini and Telegram credentials and dispatch stay server-side; Vite exposes only public Firebase metadata. Verified settlement alerts link to BscScan evidence.
 - Firestore data is scoped to the authenticated user; clients cannot write settlement evidence.
@@ -18,6 +18,9 @@ DividendPro is an AI-assisted dividend research, portfolio, and Web3 execution w
 - The 85% rule is a calibrated probability and one-sided Wilson lower-bound gate over at least 200 time-ordered samples.
 - Automatic promotion is `SIMULATION -> CANARY_LIVE -> LIVE`; canary is capped at USD 25 and requires 20 finalized successes with zero evidence failures before scaling.
 - The only coded live MEV call is the allowlisted atomic V2 executor in `contracts/VerifiedArbitrageExecutor.sol`; it reverts below minimum profit.
+- The BSC execution signer is an HSM-backed, non-exportable Google Cloud KMS
+  secp256k1 key. The server pins its derived public address and validates KMS
+  request/response CRC32C checks before accepting a signature.
 - Geographic worker Terraform for Tokyo, Frankfurt, and Northern Virginia has
   been applied under `infra/terraform/mev`. The workers are provisioned but
   default to `TERMINATED` after the simulation smoke until live credentials,

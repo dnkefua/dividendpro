@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, Bell, Lock, Server, ShieldCheck } from "lucide-react";
-import { getTelegramStatus, testTelegramConnection } from "../services/telegram";
+import { getTelegramStatus } from "../services/telegram";
 
 const LEGACY_WALLET_KEYS = [
   "divpro_sniper_wallet_session",
@@ -10,7 +10,6 @@ const LEGACY_WALLET_KEYS = [
 
 export default function SniperBot() {
   const [telegramConfigured, setTelegramConfigured] = useState(false);
-  const [telegramNotice, setTelegramNotice] = useState("");
   const [legacyWalletPresent, setLegacyWalletPresent] = useState(false);
 
   useEffect(() => {
@@ -19,12 +18,6 @@ export default function SniperBot() {
       key => Boolean(localStorage.getItem(key) || sessionStorage.getItem(key)),
     ));
   }, []);
-
-  const testTelegram = async () => {
-    setTelegramNotice("Testing authenticated server dispatch…");
-    const delivered = await testTelegramConnection();
-    setTelegramNotice(delivered ? "Server-side test delivered." : "Delivery failed. Sign in and verify backend configuration.");
-  };
 
   const clearLegacyWallet = () => {
     const approved = window.confirm(
@@ -90,11 +83,7 @@ export default function SniperBot() {
         <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#93c5fd", fontWeight: 800 }}>
           <Bell size={18} /> Telegram: {telegramConfigured ? "server configured" : "not configured or sign-in required"}
         </div>
-        <p style={{ color: "#64748b", fontSize: "12px" }}>The bot token and chat ID remain server-side. This test contains no trade or profit claim.</p>
-        <button disabled={!telegramConfigured} onClick={testTelegram} style={{ background: "#2563eb", border: "none", borderRadius: "9px", color: "white", padding: "9px 13px", fontWeight: 800, cursor: telegramConfigured ? "pointer" : "not-allowed", opacity: telegramConfigured ? 1 : 0.5 }}>
-          Test Server Dispatch
-        </button>
-        {telegramNotice && <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "9px" }}>{telegramNotice}</div>}
+        <p style={{ color: "#64748b", fontSize: "12px" }}>The bot token and chat ID remain server-side. No browser test or simulation dispatch exists; alerts require finalized receipt reconciliation.</p>
       </div>
     </div>
   );

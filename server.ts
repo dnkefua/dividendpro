@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { authenticateFirebaseRequest, registerTruthLayerRoutes } from "./server/truthLayer";
 import { registerMevControlRoutes } from "./server/mevControl";
 import { registerMevExecutionRoutes } from "./server/mevExecution";
+import { verifyConfiguredKmsSigner } from "./server/kmsEvmSigner";
 
 dotenv.config();
 
@@ -76,6 +77,10 @@ function sanitizePromptInput(str: unknown): string {
 }
 
 async function startServer() {
+  if (process.env.MEV_KMS_KEY_VERSION || process.env.MEV_EXECUTION_SIGNER_ADDRESS) {
+    const signerAddress = await verifyConfiguredKmsSigner();
+    console.log(`Cloud KMS execution signer verified: ${signerAddress}`);
+  }
   const app = express();
   app.use(express.json());
 

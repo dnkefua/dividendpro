@@ -76,18 +76,6 @@ export async function sendTelegramHtml(text: string): Promise<boolean> {
   return response.ok;
 }
 
-function notificationFor(event: string, payload: Record<string, unknown>, user: DecodedIdToken): string | null {
-  const actor = escapeHtml(user.email || user.uid);
-  switch (event) {
-    case "test":
-      return `✅ <b>DividendPro Truth Layer</b>\nServer-side Telegram delivery verified for ${actor}.`;
-    case "paper_alpha_trade":
-      return `🧪 <b>SIMULATION ONLY — NO FUNDS MOVED</b>\nSymbol: ${escapeHtml(payload.symbol)}\nModel PnL: ${escapeHtml(payload.pnlUsd)} USD\nThis is a paper result, not a realized profit or blockchain transaction.`;
-    default:
-      return null;
-  }
-}
-
 function authFailure(res: Response): void {
   res.status(401).json({ error: "Authenticated Firebase session required." });
 }
@@ -96,7 +84,8 @@ export function registerTruthLayerRoutes(app: Express): void {
   app.get("/api/truth/health", (_req, res) => {
     const mevLiveExecutionEnabled = process.env.MEV_LIVE_EXECUTION_ENABLED === "true";
     const mevExecutorConfigured = Boolean(
-      process.env.MEV_EXECUTION_PRIVATE_KEY
+      process.env.MEV_KMS_KEY_VERSION
+      && process.env.MEV_EXECUTION_SIGNER_ADDRESS
       && process.env.MEV_EXECUTOR_ADDRESS
       && process.env.MEV_ROUTER_ALLOWLIST
       && process.env.MEV_TOKEN_ALLOWLIST
@@ -112,6 +101,7 @@ export function registerTruthLayerRoutes(app: Express): void {
         settlementVerificationAvailable: true,
         settlementVerificationIsExecution: false,
         chainReceiptRequired: true,
+        finalizedBlockRequired: true,
       },
       chainId: BSC_CHAIN_ID,
       token: BSC_USDT_ADDRESS,
@@ -124,21 +114,6 @@ export function registerTruthLayerRoutes(app: Express): void {
     try {
       await authenticateFirebaseRequest(req);
       res.json({ configured: Boolean(getTelegramConfig()), serverManaged: true });
-    } catch {
-      authFailure(res);
-    }
-  });
-
-  app.post("/api/notifications/telegram", async (req, res) => {
-    try {
-      const user = await authenticateFirebaseRequest(req);
-      const event = typeof req.body?.event === "string" ? req.body.event : "";
-      const payload = req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : {};
-      const message = notificationFor(event, payload, user);
-      if (!message) return void res.status(400).json({ error: "Unsupported or invalid notification event." });
-      if (!getTelegramConfig()) return void res.status(503).json({ error: "Server-side Telegram is not configured." });
-      const delivered = await sendTelegramHtml(message);
-      res.status(delivered ? 200 : 502).json({ delivered });
     } catch {
       authFailure(res);
     }
@@ -169,15 +144,22 @@ export function registerTruthLayerRoutes(app: Express): void {
       }
 
       const provider = new JsonRpcProvider(BSC_RPC_URL, BSC_CHAIN_ID, { staticNetwork: true });
-      const [receipt, transaction, latestBlock] = await Promise.all([
+      const [receipt, transaction, latestBlock, finalizedBlock] = await Promise.all([
         provider.getTransactionReceipt(txHash),
         provider.getTransaction(txHash),
         provider.getBlockNumber(),
+        provider.getBlock("finalized").catch(() => null),
       ]);
       if (!receipt || !transaction) {
         return void res.status(409).json({ error: "Transaction is not yet available on BSC. Retry after confirmation." });
       }
       if (receipt.status !== 1) return void res.status(422).json({ error: "BSC transaction reverted." });
+      if (!finalizedBlock) {
+        return void res.status(503).json({ error: "BSC finalized-block evidence is unavailable. No alert was sent." });
+      }
+      if (receipt.blockNumber > finalizedBlock.number) {
+        return void res.status(409).json({ error: "Transaction is confirmed but not finalized. Retry after BSC finality; no alert was sent." });
+      }
       if (transaction.chainId !== BigInt(BSC_CHAIN_ID) || getAddress(transaction.from) !== expectedFrom) {
         return void res.status(422).json({ error: "Transaction sender or network does not match the signed request." });
       }
@@ -193,7 +175,7 @@ export function registerTruthLayerRoutes(app: Express): void {
       const evidence = {
         schemaVersion: 1,
         environment: "LIVE" as const,
-        verificationStatus: "VERIFIED_ON_CHAIN" as const,
+        verificationStatus: "FINALIZED_ON_CHAIN" as const,
         walletOwnershipProof: "EIP191_SIGNATURE_VERIFIED" as const,
         uid: user.uid,
         txHash: receipt.hash,
@@ -210,6 +192,8 @@ export function registerTruthLayerRoutes(app: Express): void {
         blockHash: receipt.blockHash,
         transactionIndex: receipt.index,
         confirmations,
+        finalizedBlockNumber: finalizedBlock.number,
+        finalizedBlockHash: finalizedBlock.hash,
         explorerUrl: `https://bscscan.com/tx/${receipt.hash}`,
       };
 
@@ -218,7 +202,7 @@ export function registerTruthLayerRoutes(app: Express): void {
         .set({ ...evidence, verifiedAt: FieldValue.serverTimestamp() }, { merge: false });
 
       await sendTelegramHtml(
-        `✅ <b>VERIFIED BSC USDT SETTLEMENT</b>\nAmount: <b>${escapeHtml(evidence.amount)} USDT</b>\nFrom: <code>${escapeHtml(expectedFrom)}</code>\nTo: <code>${escapeHtml(expectedTo)}</code>\nBlock: ${receipt.blockNumber}\n<a href="${evidence.explorerUrl}">Open immutable transaction evidence</a>`,
+        `✅ <b>FINALIZED BSC USDT SETTLEMENT</b>\nAmount: <b>${escapeHtml(evidence.amount)} USDT</b>\nFrom: <code>${escapeHtml(expectedFrom)}</code>\nTo: <code>${escapeHtml(expectedTo)}</code>\nBlock: ${receipt.blockNumber}\nFinalized through block: ${finalizedBlock.number}\n<a href="${evidence.explorerUrl}">Open immutable transaction evidence</a>`,
       ).catch(() => false);
 
       res.json({ evidence });

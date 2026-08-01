@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { MaestroTokenInfo } from "../types";
 import { checkHoneypot, getTokenMetadata } from "../services/alchemyBSC";
-import { getTelegramStatus, testTelegramConnection } from "../services/telegram";
+import { getTelegramStatus } from "../services/telegram";
 import {
   Search, ShieldCheck, ShieldAlert, ExternalLink,
   AlertTriangle, Info, Zap, Users, DollarSign, Activity
@@ -26,7 +26,6 @@ export default function MaestroBotPanel() {
 
   // Telegram Integration State
   const [tgConnected, setTgConnected] = useState(false);
-  const [tgStatusNotice, setTgStatusNotice] = useState("");
 
   // Autonomous Maestro Profit Sniper State
   const [autoMaestroActive, setAutoMaestroActive] = useState(false);
@@ -40,16 +39,6 @@ export default function MaestroBotPanel() {
   useEffect(() => {
     getTelegramStatus().then((status) => setTgConnected(status.configured));
   }, []);
-
-  const handleTestTelegram = async () => {
-    setTgStatusNotice("Sending test alert to Telegram...");
-    const ok = await testTelegramConnection();
-    if (ok) {
-      setTgStatusNotice("✅ Test message delivered to Telegram!");
-    } else {
-      setTgStatusNotice("❌ Server-side Telegram is unavailable or you are not signed in.");
-    }
-  };
 
   // Autonomous Maestro Loop
   useEffect(() => {
@@ -236,28 +225,8 @@ export default function MaestroBotPanel() {
         </div>
 
         <p style={{ margin: 0, color: "#94a3b8", fontSize: "12px", lineHeight: 1.6 }}>
-          Bot credentials and the destination chat are held only by the backend. The browser cannot read, save, or call Telegram with the bot token. Maestro results on this page are simulations and are never reported as realized profit.
+          Bot credentials and the destination chat are held only by the backend. The browser has no Telegram dispatch endpoint. Alerts are emitted only after server-side finalized receipt reconciliation; Maestro simulations are never sent as realized profit.
         </p>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={handleTestTelegram}
-            disabled={!tgConnected}
-            style={{
-              padding: "8px 16px", background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#e2e8f0", fontWeight: 600, fontSize: "12px", cursor: tgConnected ? "pointer" : "not-allowed",
-              opacity: tgConnected ? 1 : 0.5,
-            }}
-          >
-            Send Authenticated Test Alert
-          </button>
-        </div>
-
-        {tgStatusNotice && (
-          <p style={{ fontSize: "12px", color: "#34d399", margin: 0, fontWeight: 600 }}>
-            {tgStatusNotice}
-          </p>
-        )}
       </div>
 
       {/* Contract Input */}

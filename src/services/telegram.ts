@@ -23,18 +23,6 @@ async function authenticatedRequest(path: string, init: RequestInit = {}): Promi
   });
 }
 
-async function sendEvent(event: string, payload: Record<string, unknown> = {}): Promise<boolean> {
-  try {
-    const response = await authenticatedRequest("/api/notifications/telegram", {
-      method: "POST",
-      body: JSON.stringify({ event, payload }),
-    });
-    return Boolean(response?.ok);
-  } catch {
-    return false;
-  }
-}
-
 export async function getTelegramStatus(): Promise<TelegramStatus> {
   try {
     const response = await authenticatedRequest("/api/telegram/status");
@@ -43,12 +31,4 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
   } catch {
     return { configured: false, serverManaged: true };
   }
-}
-
-export async function testTelegramConnection(): Promise<boolean> {
-  return sendEvent("test");
-}
-
-export async function notifyPaperAlphaTrade(symbol: string, pnlUsd: number): Promise<void> {
-  await sendEvent("paper_alpha_trade", { symbol, pnlUsd });
 }

@@ -5,13 +5,13 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
   Interface,
   JsonRpcProvider,
-  Wallet,
   getAddress,
   isHexString,
   keccak256,
   toUtf8Bytes,
 } from "ethers";
 import { evaluateStoredPromotion, submitSignedExecutionToWorkers } from "./mevControl";
+import { configuredKmsSigner } from "./kmsEvmSigner";
 import { sendTelegramHtml } from "./truthLayer";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "dividendpro-3b397";
@@ -20,6 +20,42 @@ const STRATEGY_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const EXECUTOR_INTERFACE = new Interface([
   "function executeArbitrage((bytes32 executionId,address tokenIn,uint256 amountIn,address routerBuy,address routerSell,address[] buyPath,address[] sellPath,uint256 minProfit,address recipient,uint256 deadline) params) returns (uint256 profit)",
 ]);
+const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
+
+type WorkerExecutionResult = {
+  canonical: Record<string, any>;
+  regional: Record<string, any>[];
+};
+
+function positiveBigInt(value: unknown): bigint | null {
+  try {
+    const parsed = BigInt(String(value));
+    return parsed > 0n ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isFinalizedReceiptReconciledProfit(result: WorkerExecutionResult): boolean {
+  const regional = Array.isArray(result?.regional) ? result.regional : [];
+  const canonicalHash = String(result?.canonical?.txHash || "").toLowerCase();
+  const canonicalProfit = positiveBigInt(result?.canonical?.realizedProfitBaseUnits);
+  if (regional.length === 0 || !HASH_PATTERN.test(canonicalHash) || canonicalProfit === null) return false;
+
+  return regional.every(evidence => {
+    const includedBlock = Number(evidence?.includedBlockNumber);
+    const finalizedBlock = Number(evidence?.finalizedBlockNumber);
+    return evidence?.terminalState === "FINALIZED_PROFIT"
+      && String(evidence?.txHash || "").toLowerCase() === canonicalHash
+      && HASH_PATTERN.test(String(evidence?.includedBlockHash || ""))
+      && HASH_PATTERN.test(String(evidence?.finalizedBlockHash || ""))
+      && Number.isSafeInteger(includedBlock)
+      && Number.isSafeInteger(finalizedBlock)
+      && finalizedBlock >= includedBlock
+      && positiveBigInt(evidence?.realizedProfitBaseUnits) === canonicalProfit
+      && !evidence?.error;
+  });
+}
 
 function getAdminApp() {
   return getApps()[0] || initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
@@ -95,18 +131,17 @@ async function recordExecution(
   uid: string,
   strategyId: string,
   executionId: string,
-  result: { canonical: Record<string, any>; regional: Record<string, any>[] },
-) {
+  result: WorkerExecutionResult,
+): Promise<boolean> {
   const db = getFirestore(getAdminApp());
   const strategyRef = db.doc(`users/${uid}/mevStrategies/${strategyId}`);
   const executionRef = db.doc(`users/${uid}/mevExecutions/${executionId}`);
+  const isFinalizedProfit = isFinalizedReceiptReconciledProfit(result);
   await db.runTransaction(async transaction => {
     const snapshot = await transaction.get(strategyRef);
     const strategy = snapshot.data();
     if (!strategy?.evidence || !strategy?.mode) throw new Error("Strategy promotion evidence disappeared.");
     const terminalState = String(result.canonical.terminalState || "EVIDENCE_MISMATCH");
-    const evidenceMismatch = result.regional.some(item => item.terminalState === "EVIDENCE_MISMATCH");
-    const isFinalizedProfit = terminalState === "FINALIZED_PROFIT" && !evidenceMismatch;
     const nextEvidence = {
       ...strategy.evidence,
       finalizedCanaryExecutions: strategy.mode === "CANARY_LIVE" && isFinalizedProfit
@@ -131,6 +166,7 @@ async function recordExecution(
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
   });
+  return isFinalizedProfit;
 }
 
 export function registerMevExecutionRoutes(app: Express): void {
@@ -155,14 +191,14 @@ export function registerMevExecutionRoutes(app: Express): void {
       }
 
       const rpcUrl = process.env.BSC_RPC_URL;
-      const privateKey = process.env.MEV_EXECUTION_PRIVATE_KEY;
       const executorAddress = process.env.MEV_EXECUTOR_ADDRESS;
-      if (!rpcUrl || !privateKey || !executorAddress) {
+      if (!rpcUrl || !executorAddress) {
         throw new Error("Server-side BSC signer or executor contract is not configured.");
       }
       const provider = new JsonRpcProvider(rpcUrl, BSC_CHAIN_ID, { staticNetwork: true });
       if ((await provider.getNetwork()).chainId !== 56n) throw new Error("Signer RPC is not BSC mainnet chain 56.");
-      const wallet = new Wallet(privateKey, provider);
+      const kmsSigner = configuredKmsSigner();
+      const signerAddress = await kmsSigner.getAddress();
       const executor = getAddress(executorAddress);
       if (await provider.getCode(executor) === "0x") throw new Error("Configured executor has no deployed bytecode.");
 
@@ -204,9 +240,9 @@ export function registerMevExecutionRoutes(app: Express): void {
 
       // The canonical node simulation is mandatory even if a relay also
       // simulates the bundle.
-      const simulationResult = await provider.call({ from: wallet.address, to: executor, data });
+      const simulationResult = await provider.call({ from: signerAddress, to: executor, data });
       const [gasLimitEstimate, feeData, currentBlock, currentBlockHeader] = await Promise.all([
-        provider.estimateGas({ from: wallet.address, to: executor, data }),
+        provider.estimateGas({ from: signerAddress, to: executor, data }),
         provider.getFeeData(),
         provider.getBlockNumber(),
         provider.getBlock("latest"),
@@ -216,9 +252,9 @@ export function registerMevExecutionRoutes(app: Express): void {
       const gasLimit = gasLimitEstimate * 120n / 100n;
       if (gasLimit > maxGasLimit) throw new Error("Estimated gas exceeds the server cap.");
 
-      const lease = await acquireNonceLease(provider, wallet.address, executionId);
+      const lease = await acquireNonceLease(provider, signerAddress, executionId);
       releaseLease = lease.release;
-      const signedTransaction = await wallet.signTransaction({
+      const signedTransaction = await kmsSigner.signTransaction({
         chainId: BSC_CHAIN_ID,
         type: 0,
         nonce: lease.nonce,
@@ -263,7 +299,7 @@ export function registerMevExecutionRoutes(app: Express): void {
         targetBlock,
         expiresAt: new Date((deadline + 10) * 1000).toISOString(),
         expected: {
-          sender: wallet.address,
+          sender: signerAddress,
           executor,
           calldataHash: keccak256(data),
           executionIdHash,
@@ -273,9 +309,9 @@ export function registerMevExecutionRoutes(app: Express): void {
         },
       };
       const result = await submitSignedExecutionToWorkers(payload);
-      await recordExecution(uid, strategyId, executionId, result as any);
+      const isFinalizedProfit = await recordExecution(uid, strategyId, executionId, result as WorkerExecutionResult);
 
-      if (result.canonical.terminalState === "FINALIZED_PROFIT") {
+      if (isFinalizedProfit) {
         await sendTelegramHtml(
           `✅ <b>FINALIZED BSC MEV EXECUTION</b>\n` +
           `Strategy: ${strategyId}\nExecution: ${executionId}\n` +
