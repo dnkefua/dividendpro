@@ -150,6 +150,34 @@ Current state: worker `dividendpro-mev-00002-q9q`, control plane
 `dividendpro-app-00011-7nj`, `/api/truth/health` reports `SIMULATION_ONLY`.
 Worker logs `scanner is disabled by configuration` — the placeholder route is inert.
 
+## Blocked: the configured RPC cannot support this strategy
+
+Measured against the currently configured endpoint, `https://bsc-dataseed1.binance.org/`
+(a free public dataseed), 12 samples of `eth_call getReserves`:
+
+```
+p50 155ms   p90 208ms   min 147ms   max 804ms
+
+critical path = 3 sequential round trips ≈ 465ms
+BSC block time = 450ms  ->  103% of a block consumed before the bundle is built
+```
+
+The scanner cannot finish deciding before the block it priced against has been
+replaced. Every decision would be stale on arrival, the survival rate would be ~0, and
+the run would measure the endpoint rather than the strategy — telling you nothing about
+whether the approach works.
+
+*Caveat: measured from a developer machine, not from `us-east4` where the worker runs;
+the real figure will differ. But even an optimistic 20ms p50 gives 60ms of round trips,
+13% of a block, before any of the sizing or verification work begins.*
+
+**There is also no WebSocket endpoint configured at all.** `run_scanner` requires
+`websocketRpcUrl` to start with `wss://` (or loopback `ws://`) and subscribes to
+`newHeads`; the public dataseeds are HTTP-only. Phase 0 cannot start without one.
+
+This is why Phase 1a — maintaining reserve state locally from `Sync` events, so pricing
+costs zero round trips — moves from "optimisation" to "prerequisite".
+
 ## Remaining step to start Phase 0
 
 Add a **new pinned version** of `mev-worker-config-us-east4` whose
