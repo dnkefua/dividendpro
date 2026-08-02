@@ -150,12 +150,18 @@ export default function App() {
   // identical to a mistyped password: the button simply did nothing.
   const describeSignInError = (err: unknown): string => {
     const code = (err as { code?: string })?.code || "";
+    const projectId = auth.app.options.projectId || "unknown";
     switch (code) {
+      // Always name the project. These two codes are indistinguishable from
+      // "provider disabled", but they also fire when the app is pointed at a
+      // different project than the one that was configured — and without the
+      // project ID on screen that looks identical to a console change not
+      // having taken effect.
       case "auth/configuration-not-found":
       case "auth/operation-not-allowed":
-        return "Google sign-in is not enabled for this project. Enable Authentication → Sign-in method → Google in the Firebase console.";
+        return `Google sign-in is not enabled on Firebase project "${projectId}". Enable Authentication → Sign-in method → Google for that exact project — check the project selector, not just that it is enabled somewhere.`;
       case "auth/unauthorized-domain":
-        return `This domain (${window.location.hostname}) is not in the Firebase authorised domains list.`;
+        return `${window.location.hostname} is not an authorised domain on Firebase project "${projectId}".`;
       case "auth/popup-blocked":
         return "Your browser blocked the sign-in popup. Allow popups for this site and try again.";
       case "auth/popup-closed-by-user":
