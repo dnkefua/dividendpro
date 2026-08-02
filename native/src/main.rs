@@ -360,7 +360,23 @@ async fn main() -> anyhow::Result<()> {
         rpc,
         relays: Arc::new(relays),
     };
-    if state.live_enabled && env::var("MEV_SCANNER_CONFIG_JSON").is_ok() {
+    // The scanner runs whenever a route is configured, NOT only when live
+    // execution is enabled.
+    //
+    // Gating the scanner on `live_enabled` made the promotion evidence
+    // unobtainable: a strategy must accumulate several hundred settled
+    // observations before it can be promoted out of SIMULATION, but those
+    // observations are produced by the scanner, which would not start until
+    // live execution was already on. Evidence that can only be gathered after
+    // the decision it is meant to inform is not evidence.
+    //
+    // Nothing is loosened by this. Whether an observation becomes an execution
+    // is decided entirely by the control plane's `executeAuthorized`, which
+    // separately requires three regional workers reporting
+    // liveExecutionEnabled, MEV_LIVE_EXECUTION_ENABLED on the control plane, a
+    // deployed executor address, and all three allowlists. A scanner running
+    // without those observes and settles; it cannot execute.
+    if env::var("MEV_SCANNER_CONFIG_JSON").is_ok() {
         let scanner_rpc = state.rpc.clone().ok_or_else(|| anyhow::anyhow!(
             "BSC_RPC_URL is required when the scanner is configured"
         ))?;
