@@ -109,32 +109,60 @@ direction dominates.
   the right default for Phase 0 (correctness over speed) and is exactly what Phase 1a
   moves off the hot path.
 
-## Deploy sequence
+## Deploy — done
+
+The worker is deployed and healthy. Recorded here because the mechanics are not
+obvious and cost two failed attempts to discover.
+
+**The worker does not take its configuration from env vars.** It loads its entire
+environment from Secret Manager via `MEV_CONFIG_SECRET_RESOURCE`, which
+`bootstrap.rs` requires to be **version-pinned** — `latest` is explicitly rejected.
+Per-region secrets already exist: `mev-worker-config-{us-east4,europe-west3,asia-northeast1}`,
+each holding `BSC_RPC_URL`, `MEV_RELAYS_JSON`, `MEV_SCANNER_CONFIG_JSON`,
+`MEV_SERVICE_TOKEN`, `MEV_LIVE_EXECUTION_ENABLED`, `RUST_LOG`.
+
+**Use the dedicated service account.** `dividendpro-mev-worker@` already holds
+`secretAccessor` on those secrets. Deploying under the default compute SA fails with a
+403 from Secret Manager and the container exits — correctly, rather than starting
+degraded. Do not fix that by granting the default compute SA access; use the intended
+identity.
+
+**There is no `gcr.io` Artifact Registry repo in this project**, only
+`cloud-run-source-deploy`. `gcloud builds submit --tag gcr.io/...` is denied. Build via
+`gcloud run deploy --source .`, which uses the existing repo.
 
 ```bash
-# 1. Worker image (runs cargo test during build)
+# Build + deploy in one step, under the intended identity
 cd native
-gcloud builds submit --tag gcr.io/dividendpro-3b397/dividendpro-mev --project dividendpro-3b397
-
-# 2. Worker service — no public ingress, live execution OFF
-gcloud run deploy dividendpro-mev \
-  --image gcr.io/dividendpro-3b397/dividendpro-mev \
+gcloud run deploy dividendpro-mev --source . \
   --project dividendpro-3b397 --region us-east4 \
   --no-allow-unauthenticated \
-  --set-env-vars 'MEV_REGION=us-east4,BSC_RPC_URL=<HTTPS_RPC>,MEV_LIVE_EXECUTION_ENABLED=false' \
-  --set-secrets 'MEV_SERVICE_TOKEN=mev-service-token:latest,MEV_EXECUTOR_INTERNAL_TOKEN=mev-executor-internal-token:latest'
+  --service-account dividendpro-mev-worker@dividendpro-3b397.iam.gserviceaccount.com \
+  --set-env-vars 'MEV_REGION=us-east4,MEV_CONFIG_SECRET_RESOURCE=projects/dividendpro-3b397/secrets/mev-worker-config-us-east4/versions/1'
 
-# 3. Point the control plane at it
+# Point the control plane at it (note the ^@^ delimiter — the value contains commas)
 gcloud run services update dividendpro-app \
   --project dividendpro-3b397 --region us-east4 \
-  --set-env-vars 'MEV_ORCHESTRATOR_URLS_JSON=[{"region":"us-east4","url":"<WORKER_URL>"}]'
-
-# 4. Confirm
-curl -s https://dividendpro-3b397.web.app/api/truth/health   # expect SIMULATION_ONLY
+  --update-env-vars '^@^MEV_ORCHESTRATOR_URLS_JSON=[{"region":"us-east4","url":"https://dividendpro-mev-539817560279.us-east4.run.app"}]'
 ```
 
-`MEV_LIVE_EXECUTION_ENABLED` stays false. Phase 0 is measurement only; no capital and
-no deployed executor contract are required.
+Current state: worker `dividendpro-mev-00002-q9q`, control plane
+`dividendpro-app-00011-7nj`, `/api/truth/health` reports `SIMULATION_ONLY`.
+Worker logs `scanner is disabled by configuration` — the placeholder route is inert.
+
+## Remaining step to start Phase 0
+
+Add a **new pinned version** of `mev-worker-config-us-east4` whose
+`MEV_SCANNER_CONFIG_JSON` is the config above with `enabled: true`, then redeploy the
+worker pointing at that version number. Two values must be supplied first:
+
+- `userId` — the Firebase UID the evidence is written under.
+- `websocketRpcUrl` — confirm what the secret currently holds. On a public dataseed
+  Phase 0 measures the endpoint, not the strategy, and the survival rate will read
+  pessimistically. This is the single biggest lever on the result.
+
+`MEV_LIVE_EXECUTION_ENABLED` stays false throughout. Phase 0 needs no capital and no
+deployed executor contract.
 
 ## What to read after 7 days
 
