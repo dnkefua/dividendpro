@@ -182,12 +182,30 @@ costs zero round trips — moves from "optimisation" to "prerequisite".
 
 Add a **new pinned version** of `mev-worker-config-us-east4` whose
 `MEV_SCANNER_CONFIG_JSON` is the config above with `enabled: true`, then redeploy the
-worker pointing at that version number. Two values must be supplied first:
+worker pointing at that version number.
 
-- `userId` — the Firebase UID the evidence is written under.
-- `websocketRpcUrl` — confirm what the secret currently holds. On a public dataseed
-  Phase 0 measures the endpoint, not the strategy, and the survival rate will read
-  pessimistically. This is the single biggest lever on the result.
+**Resolved:** `userId` is `RzaqDK7We3SHqkpMI3NcK3gnuVq1` (uncledez8@gmail.com, google.com
+provider). Firebase Auth is live on `dividendpro-3b397` with `localhost`,
+`dividendpro-3b397.firebaseapp.com` and `dividendpro-3b397.web.app` authorised.
+
+**Still required:** a BSC RPC endpoint providing **both** `wss://` (for `newHeads`) and
+`https://`. The scanner validates that `websocketRpcUrl` starts with `wss://` or
+loopback `ws://`, and public dataseeds are HTTP-only. See the latency measurement above
+for why the current endpoint cannot produce a meaningful result.
+
+### Project hygiene
+
+A duplicate Firebase project `dividendpro-e9d9a` (display name "dividendpro") existed
+and was where Google sign-in had originally been enabled, while the application targets
+`dividendpro-3b397` ("DividendPro"). The two are trivially confusable in the console
+project selector. `e9d9a` held no users, services, buckets or databases and has been
+deleted (`DELETE_REQUESTED`; `gcloud projects undelete` available for ~30 days). The
+Firebase CLI's active project is now pinned to `dividendpro-3b397`.
+
+Diagnostic note: `identitytoolkit.googleapis.com/admin/v2/...` returns
+`CONFIGURATION_NOT_FOUND` for projects on **classic Firebase Auth** — it is the Identity
+Platform API. Do not read that as "auth is not configured". The client-facing check is
+`POST /v1/accounts:createAuthUri` with the project's browser key.
 
 `MEV_LIVE_EXECUTION_ENABLED` stays false throughout. Phase 0 needs no capital and no
 deployed executor contract.
