@@ -51,6 +51,7 @@ import PricingModal from "./components/PricingModal";
 
 export default function App() {
   const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab" | "AlphaHub" | "Hummingbot">("AlphaHub");
+  const [signInError, setSignInError] = useState<string | null>(null);
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
     const saved = localStorage.getItem("divpro_stocks");
@@ -143,11 +144,39 @@ export default function App() {
     localStorage.removeItem("divpro_total_profit_bnb");
   }, []);
 
+  // Firebase surfaces sign-in failures as codes that mean nothing to a user, and
+  // several of them are configuration faults rather than anything the user did
+  // wrong. Silently logging to the console meant a misconfigured project looked
+  // identical to a mistyped password: the button simply did nothing.
+  const describeSignInError = (err: unknown): string => {
+    const code = (err as { code?: string })?.code || "";
+    switch (code) {
+      case "auth/configuration-not-found":
+      case "auth/operation-not-allowed":
+        return "Google sign-in is not enabled for this project. Enable Authentication → Sign-in method → Google in the Firebase console.";
+      case "auth/unauthorized-domain":
+        return `This domain (${window.location.hostname}) is not in the Firebase authorised domains list.`;
+      case "auth/popup-blocked":
+        return "Your browser blocked the sign-in popup. Allow popups for this site and try again.";
+      case "auth/popup-closed-by-user":
+      case "auth/cancelled-popup-request":
+        return "Sign-in was cancelled before it completed.";
+      case "auth/network-request-failed":
+        return "Network error reaching Firebase. Check your connection and try again.";
+      default:
+        return code
+          ? `Sign-in failed (${code}).`
+          : "Sign-in failed for an unknown reason. See the browser console for details.";
+    }
+  };
+
   const handleGoogleSignIn = async () => {
+    setSignInError(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
       console.error("Google Sign-In Error:", err);
+      setSignInError(describeSignInError(err));
     }
   };
 
@@ -518,8 +547,10 @@ export default function App() {
           </div>
 
           {/* Right Action Icons Group */}
-          <div className="flex items-center gap-3">
-            
+          {/* `relative` anchors the sign-in error toast, which is positioned
+              against this row rather than the page. */}
+          <div className="relative flex items-center gap-3">
+
             {/* 1-Click Theme Switcher Button */}
             <button
               onClick={toggleTheme}
@@ -593,6 +624,20 @@ export default function App() {
                 </svg>
                 <span>Google Sign In</span>
               </button>
+            )}
+            {signInError && (
+              <div
+                role="alert"
+                className="absolute right-0 top-full mt-2 z-50 max-w-xs rounded-xl border border-red-500/40 bg-red-950/95 px-3 py-2 text-[11px] font-semibold leading-snug text-red-100 shadow-lg"
+              >
+                {signInError}
+                <button
+                  onClick={() => setSignInError(null)}
+                  className="mt-1.5 block text-[10px] font-black uppercase tracking-wide text-red-300 hover:text-red-100"
+                >
+                  Dismiss
+                </button>
+              </div>
             )}
 
             {/* AI Floating Trigger Quick Action */}
