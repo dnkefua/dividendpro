@@ -159,10 +159,31 @@ export async function evaluateStoredPromotion(uid: string, strategyId: string) {
   // promotion floors, so the gap between them is a hysteresis band and a
   // strategy sitting near the threshold does not oscillate.
   if (currentMode === "CANARY_LIVE" || currentMode === "LIVE") {
-    const demotion = await firstHealthyWorker<Record<string, unknown>>("/v1/demotion/evaluate", {
-      method: "POST",
-      body: JSON.stringify({ currentMode, evidence }),
-    });
+    let demotion: Record<string, unknown>;
+    try {
+      demotion = await firstHealthyWorker<Record<string, unknown>>("/v1/demotion/evaluate", {
+        method: "POST",
+        body: JSON.stringify({ currentMode, evidence }),
+      });
+    } catch (error) {
+      // Fail closed. A worker that cannot evaluate demotion — because it is
+      // unreachable, or because it predates this route and 404s — leaves us
+      // unable to confirm a live strategy still deserves to be live. Pausing is
+      // the only safe response; swallowing the error would silently skip a
+      // safety gate, and rethrowing would make a control-plane-first deploy
+      // break promotion evaluation outright.
+      await ref.set({
+        mode: "PAUSED",
+        evidence,
+        lastDemotionEvaluation: {
+          demoted: true,
+          targetMode: "PAUSED",
+          reason: error instanceof Error ? error.message : String(error),
+        },
+        promotionUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return { strategyId, evaluation: { targetMode: "PAUSED" }, persisted: true, demoted: true };
+    }
     if (demotion.demoted === true) {
       const demotedMode = typeof demotion.targetMode === "string" ? demotion.targetMode : "PAUSED";
       await ref.set({
