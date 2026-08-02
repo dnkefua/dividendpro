@@ -1,0 +1,24 @@
+[profile.default]
+# This repo's `src/` is the React application, so the Solidity source root is
+# pointed at `contracts/` explicitly. Build output and cache are given their own
+# directories for the same reason — `out/` and `cache/` would collide with the
+# frontend toolchain.
+src = "contracts"
+test = "contracts/test"
+out = "forge-out"
+cache_path = "forge-cache"
+libs = ["lib"]
+
+# Pinned to match the audited pragma. Solidity minor releases change codegen and
+# occasionally optimiser behaviour; the deployed bytecode must come from a known
+# compiler, not whatever is newest at build time.
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+evm_version = "shanghai"
+
+# Tests must not reach the network. Every fixture here is a local mock, and a
+# test that silently fell back to a live RPC would be neither deterministic nor
+# meaningful.
+offline = false
+fs_permissions = []

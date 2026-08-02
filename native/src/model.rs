@@ -99,9 +99,14 @@ pub struct EvidenceWindow {
     pub data_integrity_passed: bool,
     #[serde(default)]
     pub execution_readiness_passed: bool,
-    #[serde(default)]
+    // These two counters are owned by the execution/settlement path, not by
+    // replay. The worker has no way to observe them and `run_replay` always
+    // builds them as 0, so serializing them lets a replay response overwrite
+    // real execution history in the control plane's strategy document. They are
+    // accepted on the way in (for promotion evaluation) and never emitted.
+    #[serde(default, skip_serializing)]
     pub finalized_canary_executions: u32,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub canary_evidence_failures: u32,
 }
 
@@ -159,6 +164,59 @@ pub struct PromotionRequest {
     pub evidence: EvidenceWindow,
     #[serde(default)]
     pub policy: Option<PromotionPolicy>,
+}
+
+/// Floors below which a *live* strategy is pulled back to `Paused`.
+///
+/// These are deliberately looser than [`PromotionPolicy`]. The gap between the
+/// two is a hysteresis dead band: without it, a strategy sitting exactly on the
+/// promotion threshold would oscillate between `Live` and `Paused` on ordinary
+/// sampling noise, and every oscillation spends real gas.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemotionPolicy {
+    pub min_wilson_lower_ppm: u32,
+    pub min_probability_ppm: u32,
+    pub max_brier_loss_ppm: u32,
+    pub max_expected_calibration_error_ppm: u32,
+    pub min_profit_factor_ppm: u32,
+    pub max_drawdown_bps: u32,
+}
+
+impl Default for DemotionPolicy {
+    fn default() -> Self {
+        // Each floor sits below its promotion counterpart by a margin wide
+        // enough to absorb noise at the 200-sample minimum window.
+        Self {
+            min_wilson_lower_ppm: 800_000,              // promote at 850_000
+            min_probability_ppm: 800_000,               // promote at 850_000
+            max_brier_loss_ppm: 150_000,                // promote under 100_000
+            max_expected_calibration_error_ppm: 80_000, // promote under 50_000
+            min_profit_factor_ppm: 1_050_000,           // promote at 1_250_000
+            max_drawdown_bps: 800,                      // promote under 500
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemotionRequest {
+    pub current_mode: ExecutionMode,
+    pub evidence: EvidenceWindow,
+    #[serde(default)]
+    pub policy: Option<DemotionPolicy>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemotionEvaluation {
+    pub previous_mode: ExecutionMode,
+    pub target_mode: ExecutionMode,
+    pub demoted: bool,
+    pub wilson_lower_ppm: u32,
+    pub evaluated_at: DateTime<Utc>,
+    /// Only the gates that actually failed. Empty means nothing breached.
+    pub breaches: BTreeMap<String, GateResult>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

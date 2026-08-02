@@ -151,6 +151,30 @@ export async function evaluateStoredPromotion(uid: string, strategyId: string) {
   const currentMode = typeof stored.mode === "string" ? stored.mode : "SIMULATION";
   const evidence = structuredClone(stored.evidence);
   evidence.executionReadinessPassed = await deploymentReadinessPassed();
+
+  // Demotion is evaluated first, and only for modes that have somewhere to fall
+  // back to. Promotion gating alone can only move a strategy up, so without this
+  // a model that decays after reaching CANARY_LIVE or LIVE keeps trading on
+  // evidence it no longer has. The worker's demotion floors sit below the
+  // promotion floors, so the gap between them is a hysteresis band and a
+  // strategy sitting near the threshold does not oscillate.
+  if (currentMode === "CANARY_LIVE" || currentMode === "LIVE") {
+    const demotion = await firstHealthyWorker<Record<string, unknown>>("/v1/demotion/evaluate", {
+      method: "POST",
+      body: JSON.stringify({ currentMode, evidence }),
+    });
+    if (demotion.demoted === true) {
+      const demotedMode = typeof demotion.targetMode === "string" ? demotion.targetMode : "PAUSED";
+      await ref.set({
+        mode: demotedMode,
+        evidence,
+        lastDemotionEvaluation: demotion,
+        promotionUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return { strategyId, evaluation: demotion, persisted: true, demoted: true };
+    }
+  }
+
   const evaluation = await firstHealthyWorker<Record<string, unknown>>("/v1/promotion/evaluate", {
     method: "POST",
     body: JSON.stringify({ currentMode, evidence }),
@@ -319,12 +343,27 @@ export function registerMevControlRoutes(app: Express): void {
           records,
         }),
       });
+      // `finalizedCanaryExecutions` and `canaryEvidenceFailures` are owned by the
+      // execution path (recordExecution in mevExecution.ts), not by replay. The
+      // worker cannot observe them and now omits them from its response, but
+      // they are stripped and re-supplied here explicitly so this write can
+      // never regress execution history even if the worker's shape changes.
+      // Writing replay's zeros would reset the CANARY_LIVE -> LIVE counter on
+      // every observation, and since an observation immediately precedes every
+      // execution, the counter could never exceed 1 against a required 20.
+      const replayEvidence = { ...(replay.evidence as Record<string, unknown> | undefined) };
+      delete replayEvidence.finalizedCanaryExecutions;
+      delete replayEvidence.canaryEvidenceFailures;
       await strategyRef.set({
         schemaVersion: 1,
         strategyId,
         mode: existing?.mode || "SIMULATION",
         replay,
-        evidence: replay.evidence,
+        evidence: {
+          ...replayEvidence,
+          finalizedCanaryExecutions: Number(existing?.evidence?.finalizedCanaryExecutions || 0),
+          canaryEvidenceFailures: Number(existing?.evidence?.canaryEvidenceFailures || 0),
+        },
         evidenceSource: "SERVER_REPLAY",
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });

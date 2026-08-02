@@ -1,3 +1,4 @@
+pub mod amm;
 pub mod kernel;
 pub mod model;
 pub mod policy;
@@ -7,7 +8,8 @@ pub mod relay;
 pub mod rpc;
 pub mod scanner;
 
+pub use amm::{optimal_amount_in, CycleLegs, OptimalSize};
 pub use kernel::evaluate_opportunity;
 pub use model::*;
-pub use policy::evaluate_promotion;
+pub use policy::{evaluate_demotion, evaluate_promotion};
 pub use replay::run_replay;

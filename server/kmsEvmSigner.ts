@@ -13,6 +13,8 @@ import {
 
 const KMS_KEY_VERSION_PATTERN = /^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/locations\/[a-z0-9-]+\/keyRings\/[A-Za-z0-9_-]{1,63}\/cryptoKeys\/[A-Za-z0-9_-]{1,63}\/cryptoKeyVersions\/[1-9][0-9]*$/;
 const SECP256K1_SCALAR_BYTES = 32;
+const SECP256K1_N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+const SECP256K1_HALF_N = SECP256K1_N / 2n;
 
 type KmsClient = Pick<KeyManagementServiceClient, "getPublicKey" | "asymmetricSign">;
 
@@ -26,6 +28,26 @@ function fixedScalar(value: Buffer, label: string): string {
   while (normalized.length > 1 && normalized[0] === 0) normalized = normalized.subarray(1);
   if (normalized.length > SECP256K1_SCALAR_BYTES) throw new Error(`KMS ${label} scalar exceeds secp256k1 width.`);
   return hexlify(Buffer.concat([Buffer.alloc(SECP256K1_SCALAR_BYTES - normalized.length), normalized]));
+}
+
+/**
+ * Fold `s` into the lower half of the curve order (EIP-2 / "low-s").
+ *
+ * Cloud KMS signs with EC_SIGN_SECP256K1_SHA256 and makes no guarantee about
+ * which half of the order `s` lands in — in practice about half of signatures
+ * come back high. Ethereum has rejected high-s since Homestead, and ethers
+ * refuses to build such a signature at all ("non-canonical s"), so without this
+ * normalisation roughly one signing attempt in two throws before it can even
+ * be broadcast.
+ *
+ * (r, s) and (r, n − s) are both valid signatures over the same digest. The
+ * flip inverts the recovery parity, which the caller already resolves by
+ * trying both values.
+ */
+export function canonicalLowS(s: string): string {
+  const value = BigInt(s);
+  if (value <= SECP256K1_HALF_N) return s;
+  return `0x${(SECP256K1_N - value).toString(16).padStart(SECP256K1_SCALAR_BYTES * 2, "0")}`;
 }
 
 function readDerLength(bytes: Buffer, offset: number): { length: number; next: number } {
@@ -60,7 +82,9 @@ export function parseKmsDerSignature(der: Uint8Array): { r: string; s: string } 
   const s = bytes.subarray(sLength.next, sLength.next + sLength.length);
   cursor = sLength.next + sLength.length;
   if (s.length === 0 || cursor !== bytes.length) throw new Error("KMS signature has an invalid DER s scalar.");
-  return { r: fixedScalar(r, "r"), s: fixedScalar(s, "s") };
+  // Normalise at the KMS boundary so every downstream consumer sees only
+  // Ethereum-canonical signatures.
+  return { r: fixedScalar(r, "r"), s: canonicalLowS(fixedScalar(s, "s")) };
 }
 
 export function crc32c(data: Uint8Array): number {

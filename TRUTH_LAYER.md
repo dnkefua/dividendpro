@@ -54,6 +54,27 @@ Never use `VITE_` for server secrets. Vite is explicitly restricted to public Fi
 The execution private key is HSM-backed and non-exportable. Cloud Run has only
 `roles/cloudkms.signerVerifier` on the specific production signing key.
 
+## Executor on-chain controls
+
+`VerifiedArbitrageExecutor` enforces its own limits rather than trusting the
+control plane that builds the call. The server-side `MEV_ROUTER_ALLOWLIST`,
+`MEV_PROFIT_RECIPIENT_ALLOWLIST`, and `MEV_MAX_LIVE_NOTIONAL_USD_MICROS` remain,
+but they are now the outer of two independent checks.
+
+- Routers and profit recipients must be proposed on chain and become usable only
+  after `ALLOWLIST_DELAY` (24 hours, a compile-time constant). Revocation is
+  immediate.
+- Both exits for value — arbitrage profit and `recoverToken` — require an active
+  allowlisted recipient. The signing key is HSM-backed and non-exportable, so the
+  threat is key *use* by anything reaching the signing path; the 24-hour delay is
+  what bounds that exposure, and it applies to every exfiltration route.
+- `maxAmountIn` is a per-input-token ceiling. An unset ceiling denies the token,
+  so a newly listed token cannot trade until a limit is set deliberately.
+
+**Deployment consequence:** the canary profit recipient and both routers must be
+proposed at least 24 hours before the first live execution. Plan the canary
+window around this; it cannot be shortened.
+
 ## Security rules
 
 - Users can read/write only their own transactions and settings.
@@ -64,7 +85,24 @@ The execution private key is HSM-backed and non-exportable. Cloud Run has only
 ## Acceptance checks
 
 - `npm run lint` passes.
-- `npm test` passes transfer-event, wallet-ownership, and fail-closed simulation tests.
+- `npm test` passes transfer-event, wallet-ownership, fail-closed simulation,
+  KMS low-s normalisation, and executor value-exit constraint tests.
+- `cd native && cargo test` passes (no local toolchain; build through
+  `rust:1.89-bookworm` in Docker, matching `native/Dockerfile`).
+- `npm run test:contracts` (`forge test`) passes. The suite executes the
+  executor rather than grepping it: allowlist timelock boundaries, both
+  value-exit paths, the profit floor under fuzzed rates, reentrancy, and
+  non-standard ERC20 behaviour. Without a local Foundry install:
+
+  ```
+  docker run --rm -v "$(pwd -W):/w" -w /w --entrypoint sh \
+    ghcr.io/foundry-rs/foundry:latest \
+    -c 'git config --global --add safe.directory /w; forge test'
+  ```
+
+  `lib/forge-std` is a pinned submodule — run `git submodule update --init`
+  on a fresh clone.
+- `contracts/VerifiedArbitrageExecutor.sol` compiles under solc 0.8.24.
 - `npm run build` succeeds.
 - Client bundle contains no Telegram bot token pattern.
 - `/api/truth/health` reports `truth-layer-v1`, chain `56`, and the real

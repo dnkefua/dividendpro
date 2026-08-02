@@ -11,3 +11,7 @@ coverage/
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+# Foundry build artifacts. `lib/forge-std` is a pinned submodule and IS tracked;
+# `foundry.lock` pins its revision and must be committed too.
+forge-out/
+forge-cache/

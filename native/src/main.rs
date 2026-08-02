@@ -7,10 +7,11 @@ use axum::{
 };
 use chrono::Utc;
 use dividendpro_mev::{
-    evaluate_opportunity, evaluate_promotion,
+    evaluate_demotion, evaluate_opportunity, evaluate_promotion,
     model::{
-        ExecutionEvidence, ExecutionMode, LiveSubmissionRequest, Opportunity, PromotionRequest,
-        RiskLimits, ServiceStatus, TerminalExecutionState, BSC_CHAIN_ID,
+        DemotionEvaluation, DemotionRequest, ExecutionEvidence, ExecutionMode,
+        LiveSubmissionRequest, Opportunity, PromotionRequest, RiskLimits, ServiceStatus,
+        TerminalExecutionState, BSC_CHAIN_ID,
     },
     reconcile::{hash_opportunity, raw_transaction_hash, reconcile_finalized_execution},
     relay::{load_relays, PrivateRelay},
@@ -110,6 +111,20 @@ async fn promotion(
 ) -> Result<Json<PromotionEvaluation>, ApiError> {
     authorize(&headers, &state)?;
     Ok(Json(evaluate_promotion(&request)))
+}
+
+/// Counterpart to `/v1/promotion/evaluate`.
+///
+/// Promotion gating alone can only move a strategy up. Without a reachable
+/// demotion path, evidence that degrades after a strategy reaches CANARY_LIVE
+/// or LIVE leaves it trading on the strength of evidence it no longer has.
+async fn demotion(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<DemotionRequest>,
+) -> Result<Json<DemotionEvaluation>, ApiError> {
+    authorize(&headers, &state)?;
+    Ok(Json(evaluate_demotion(&request)))
 }
 
 fn observation_age_ms(opportunity: &Opportunity) -> Result<u32, ApiError> {
@@ -365,6 +380,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/evaluate", post(evaluate))
         .route("/v1/replay", post(replay))
         .route("/v1/promotion/evaluate", post(promotion))
+        .route("/v1/demotion/evaluate", post(demotion))
         .route("/v1/executions", post(submit_live))
         .layer(TraceLayer::new_for_http())
         .with_state(state);

@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 import {
+  Signature,
   SigningKey,
   Transaction,
   computeAddress,
   getBytes,
   hexlify,
+  recoverAddress,
 } from "ethers";
 import { KmsEvmSigner, crc32c, parseKmsDerSignature } from "../server/kmsEvmSigner";
 
@@ -80,4 +82,55 @@ test("KMS signer pins the derived address", async () => {
     { getPublicKey: async () => [{ pem }], asymmetricSign: async () => [{}] } as any,
   );
   await assert.rejects(() => signer.getAddress(), /does not match/);
+});
+
+const SECP256K1_N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+const SECP256K1_HALF_N = SECP256K1_N / 2n;
+
+function scalarHex(value: bigint): string {
+  return `0x${value.toString(16).padStart(64, "0")}`;
+}
+
+test("KMS high-s signatures are folded into the EIP-2 canonical half", () => {
+  // A real key and a real digest, so `r` is an actual curve point and recovery
+  // is meaningful. ethers always produces low-s; Cloud KMS does not, and returns
+  // the high-s representation of the same signature roughly half the time.
+  const key = new SigningKey(`0x${"11".repeat(32)}`);
+  const address = computeAddress(key.publicKey);
+  const digest = `0x${"ab".repeat(32)}`;
+  const canonical = key.sign(digest);
+
+  const highS = SECP256K1_N - BigInt(canonical.s);
+  assert.ok(highS > SECP256K1_HALF_N, "fixture must actually be high-s");
+
+  const parsed = parseKmsDerSignature(derSignature(canonical.r, scalarHex(highS)));
+  assert.equal(BigInt(parsed.s), BigInt(canonical.s), "high-s must fold back to low-s");
+  assert.ok(BigInt(parsed.s) <= SECP256K1_HALF_N, "parsed s must be canonical low-s");
+
+  // How the gap surfaces in production: Signature.from accepts a high-s value,
+  // but recoverAddress enforces EIP-2 and throws. That call sits inside
+  // signDigest's unguarded parity loop, so the error propagates straight out of
+  // signTransaction — failing about one signing attempt in two.
+  assert.throws(
+    () =>
+      recoverAddress(
+        digest,
+        Signature.from({ r: canonical.r, s: scalarHex(highS), yParity: 0 }),
+      ),
+    /non-canonical s/,
+  );
+
+  // After normalisation one of the two parities recovers the true signer, which
+  // is exactly what signDigest's loop relies on.
+  const recovered = ([0, 1] as const).map((yParity) =>
+    recoverAddress(digest, Signature.from({ r: parsed.r, s: parsed.s, yParity })),
+  );
+  assert.ok(recovered.includes(address), "normalised signature must recover the signer");
+});
+
+test("KMS low-s signatures pass through unchanged", () => {
+  const r = `0x${"11".repeat(32)}`;
+  const lowS = `0x${"22".repeat(32)}`;
+  assert.ok(BigInt(lowS) <= SECP256K1_HALF_N, "fixture must actually be low-s");
+  assert.equal(parseKmsDerSignature(derSignature(r, lowS)).s, lowS);
 });
