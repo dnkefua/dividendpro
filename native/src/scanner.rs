@@ -19,6 +19,10 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ScannerConfig {
+    /// Read from the raw JSON before this struct is deserialized, so that a
+    /// disabled placeholder need not satisfy every route field. Retained here so
+    /// the type still documents and validates the full schema.
+    #[allow(dead_code)]
     enabled: bool,
     control_plane_url: String,
     internal_token_env: String,
@@ -493,10 +497,16 @@ async fn dispatch_execution(
 
 pub async fn run_scanner(rpc: BscRpcClient) -> Result<()> {
     let raw = env::var("MEV_SCANNER_CONFIG_JSON").context("MEV_SCANNER_CONFIG_JSON is absent")?;
-    let config: ScannerConfig = serde_json::from_str(&raw)?;
-    if !config.enabled {
+    // Read the kill switch before full deserialization. A deliberately disabled
+    // placeholder should not have to satisfy every route field — requiring that
+    // turns "scanner is off" into a startup error that looks like a fault.
+    let probe: Value =
+        serde_json::from_str(&raw).context("MEV_SCANNER_CONFIG_JSON is not valid JSON")?;
+    if probe.get("enabled").and_then(Value::as_bool) != Some(true) {
+        tracing::info!("scanner is disabled by configuration; no route will be evaluated");
         return Ok(());
     }
+    let config: ScannerConfig = serde_json::from_str(&raw)?;
     for address in [
         &config.pair_buy,
         &config.pair_sell,
