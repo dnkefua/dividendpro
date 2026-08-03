@@ -35,9 +35,6 @@ pub fn amount_out(amount_in: u128, reserve_in: u128, reserve_out: u128, fee_bps:
     let Some(amount_with_fee) = amount_in.checked_mul(fee_multiplier) else {
         return 0;
     };
-    let Some(numerator) = amount_with_fee.checked_mul(reserve_out) else {
-        return 0;
-    };
     let denominator = match reserve_in
         .checked_mul(10_000)
         .and_then(|value| value.checked_add(amount_with_fee))
@@ -45,7 +42,61 @@ pub fn amount_out(amount_in: u128, reserve_in: u128, reserve_out: u128, fee_bps:
         Some(value) if value > 0 => value,
         _ => return 0,
     };
-    numerator / denominator
+    // `amount_with_fee * reserve_out` does NOT fit in u128 for real pools. A
+    // WBNB/USDT pair holds ~3·10^22 wei of reserve; even a 1-unit trade needs 45
+    // decimal digits and u128 holds 39. Computing this with `checked_mul` and
+    // returning 0 on overflow — as this did — silently reports every route as
+    // unprofitable, which is indistinguishable from a quiet market. The product
+    // must be carried at 256 bits.
+    mul_div_floor(amount_with_fee, reserve_out, denominator).unwrap_or(0)
+}
+
+/// 128×128 → 256-bit product, as (high, low).
+fn widening_mul(a: u128, b: u128) -> (u128, u128) {
+    const MASK: u128 = u64::MAX as u128;
+    let (a_hi, a_lo) = (a >> 64, a & MASK);
+    let (b_hi, b_lo) = (b >> 64, b & MASK);
+    let ll = a_lo * b_lo;
+    let lh = a_lo * b_hi;
+    let hl = a_hi * b_lo;
+    let hh = a_hi * b_hi;
+    let mid = (ll >> 64) + (lh & MASK) + (hl & MASK);
+    let lo = (ll & MASK) | (mid << 64);
+    let hi = hh + (lh >> 64) + (hl >> 64) + (mid >> 64);
+    (hi, lo)
+}
+
+/// `floor(a · b / d)` evaluated over a 256-bit intermediate.
+///
+/// Restoring long division of the 256-bit product by `d`. Returns `None` only
+/// when `d` is zero or the quotient would not fit in u128 — never a silently
+/// truncated result, because a truncated price is a wrong price.
+fn mul_div_floor(a: u128, b: u128, d: u128) -> Option<u128> {
+    if d == 0 {
+        return None;
+    }
+    let (hi, lo) = widening_mul(a, b);
+    if hi == 0 {
+        return Some(lo / d);
+    }
+    if hi >= d {
+        return None; // quotient exceeds u128
+    }
+    let mut rem = hi;
+    let mut quo = 0_u128;
+    let mut bit = 128;
+    while bit > 0 {
+        bit -= 1;
+        // Doubling `rem` can exceed u128. `rem < d` holds on entry, so the true
+        // value is at most 2d − 1 and the wrapped subtraction below recovers it.
+        let carry = rem >> 127;
+        rem = (rem << 1) | ((lo >> bit) & 1);
+        if carry == 1 || rem >= d {
+            rem = rem.wrapping_sub(d);
+            quo |= 1_u128 << bit;
+        }
+    }
+    Some(quo)
 }
 
 /// The two legs of a buy-then-sell cycle that returns to the input token.
@@ -295,6 +346,62 @@ mod tests {
         // Preserves the behaviour previously asserted in scanner.rs.
         assert_eq!(amount_out(1_000, 1_000_000, 2_000_000, 25), 1_993);
         assert_eq!(amount_out(0, 1_000, 1_000, 25), 0);
+    }
+
+    /// Reserves from the live PancakeSwap USDT/WBNB pair. Expected values were
+    /// computed with exact arbitrary-precision arithmetic.
+    ///
+    /// The previous implementation returned 0 for every one of these because
+    /// `amount_with_fee * reserve_out` overflows u128 — 45 digits against a
+    /// 39-digit type. The unit tests missed it entirely by using toy reserves of
+    /// 1e6, where nothing overflows. Any AMM test that does not use
+    /// production-scale magnitudes is testing the wrong thing.
+    #[test]
+    fn quotes_real_pool_reserves_without_overflowing() {
+        const RESERVE_IN: u128 = 18_482_235_141_481_379_555_131_431; // USDT, 18dp
+        const RESERVE_OUT: u128 = 31_618_318_006_595_436_638_783; // WBNB, 18dp
+        for (amount_in, expected) in [
+            (1_000_000_000_000_000_000_u128, 1_706_464_086_618_751_u128),
+            (1_000_000_000_000_000_000_000, 1_706_372_084_545_226_138),
+            (2_000_000_000_000_000_000_000, 3_412_560_000_624_543_158),
+        ] {
+            assert_eq!(
+                amount_out(amount_in, RESERVE_IN, RESERVE_OUT, 25),
+                expected,
+                "amount_in {amount_in}"
+            );
+        }
+    }
+
+    #[test]
+    fn mul_div_matches_plain_division_when_no_overflow() {
+        assert_eq!(mul_div_floor(6, 7, 3), Some(14));
+        assert_eq!(mul_div_floor(u128::MAX, 1, 1), Some(u128::MAX));
+        assert_eq!(mul_div_floor(1, 1, 0), None);
+        // Exact powers of two exercise the carry path.
+        assert_eq!(mul_div_floor(1 << 100, 1 << 20, 1 << 110), Some(1 << 10));
+    }
+
+    #[test]
+    fn mul_div_refuses_rather_than_truncating() {
+        // Quotient would exceed u128 — must be None, never a wrapped value.
+        assert_eq!(mul_div_floor(u128::MAX, u128::MAX, 1), None);
+    }
+
+    #[test]
+    fn real_pool_round_trip_is_priced_not_zeroed() {
+        // Both legs at production scale; the round trip must produce a real
+        // number rather than collapsing to zero.
+        let legs = CycleLegs {
+            buy_reserve_in: 18_482_235_141_481_379_555_131_431,
+            buy_reserve_out: 31_618_318_006_595_436_638_783,
+            buy_fee_bps: 25,
+            sell_reserve_in: 347_160_000_000_000_000_000,
+            sell_reserve_out: 202_986_000_000_000_000_000_000,
+            sell_fee_bps: 20,
+        };
+        let out = legs.round_trip_out(1_000_000_000_000_000_000_000);
+        assert!(out > 0, "round trip must price, got 0");
     }
 
     #[test]

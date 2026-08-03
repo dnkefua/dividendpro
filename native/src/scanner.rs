@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
     env,
+    sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant},
 };
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -87,6 +88,17 @@ fn default_router_tolerance_bps() -> u32 {
 fn default_require_router_verification() -> bool {
     true
 }
+
+/// Emit one heartbeat per this many blocks. At BSC's ~0.45s blocks, 20 gives a
+/// line roughly every 9 seconds — enough to judge liveness and latency quickly
+/// without flooding Cloud Logging over a multi-day run.
+const HEARTBEAT_EVERY_N_BLOCKS: u64 = 20;
+static HEARTBEAT_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Fixed probe size used only to express how far the pair is from profitable,
+/// in bps. Never traded — it exists so the heartbeat reports a comparable number
+/// across blocks rather than one that moves with the searched optimum.
+const PROBE_AMOUNT_IN: u128 = 1_000_000_000_000_000_000_000; // 1000 units, 18dp
 
 fn default_relay_latency_budget_ms() -> u32 {
     // Conservative single-digit-to-low-double-digit relay hops plus scheduling
@@ -222,6 +234,33 @@ async fn evaluate_block(
     // hard ceiling, so sizing can only move down from the previous behaviour
     // and never past the operator's risk limit.
     let sized = amm::optimal_amount_in(&legs, amount_in_cap);
+
+    // Heartbeat. An observation is only ever written when the spread clears the
+    // round-trip fee, which on a liquid pair is rare — so silence is ambiguous:
+    // a healthy scanner with no opportunity looks exactly like a dead one. This
+    // emits liveness, the measured freshness of the state, and how far the pair
+    // actually is from profitable, so the pipeline can be judged in minutes
+    // instead of days.
+    let beat = HEARTBEAT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    if beat % HEARTBEAT_EVERY_N_BLOCKS == 0 {
+        let implied_out = legs.round_trip_out(PROBE_AMOUNT_IN);
+        let shortfall_bps = if implied_out >= PROBE_AMOUNT_IN {
+            0i64
+        } else {
+            // How many bps the round trip is underwater at a fixed probe size.
+            (((PROBE_AMOUNT_IN - implied_out) as i128 * 10_000) / PROBE_AMOUNT_IN as i128) as i64
+        };
+        tracing::info!(
+            block_number,
+            data_age_ms = elapsed_ms_u32(head_received_at),
+            best_size = %sized.amount_in,
+            gross_profit = %sized.gross_profit,
+            shortfall_bps,
+            profitable_size_exists = sized.amount_in > 0,
+            "scanner heartbeat"
+        );
+    }
+
     if sized.amount_in == 0 || sized.gross_profit < min_profit {
         return Ok(None);
     }
