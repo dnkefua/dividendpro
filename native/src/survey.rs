@@ -388,18 +388,43 @@ pub async fn run_survey(rpc: BscRpcClient) -> Result<()> {
         // Report periodically rather than every sample; the interesting signal
         // is accumulated persistence, not any single reading.
         if samples_taken % 20 == 0 {
-            let positive: Vec<&String> = stats
+            // One structured line per record, never a multi-line block. Cloud
+            // Logging splits stdout on newlines, so an embedded report is torn
+            // into separate entries and its fields are orphaned onto the last
+            // fragment — the record becomes unqueryable and effectively lost.
+            let ever_positive = stats.values().filter(|s| s.positive_samples > 0).count();
+            let best = stats
                 .iter()
-                .filter(|(_, s)| s.positive_samples > 0)
-                .map(|(k, _)| k)
-                .collect();
+                .max_by_key(|(_, s)| (s.longest_positive_run, s.best_bps));
             tracing::info!(
                 block_number,
                 samples_taken,
-                routes_ever_positive = positive.len(),
-                "survey progress\n{}",
-                report(&stats)
+                routes_total = stats.len(),
+                routes_ever_positive = ever_positive,
+                best_route = best.map(|(k, _)| k.as_str()).unwrap_or("-"),
+                best_run = best.map(|(_, s)| s.longest_positive_run).unwrap_or(0),
+                best_bps = best.map(|(_, s)| s.best_bps).unwrap_or(0),
+                "survey summary"
             );
+
+            // Detail lines for what actually matters: anything that ever cleared
+            // the fee floor, else the closest few so the margin is visible.
+            let mut rows: Vec<(&String, &RouteStats)> = stats.iter().collect();
+            rows.sort_by(|a, b| {
+                b.1.longest_positive_run
+                    .cmp(&a.1.longest_positive_run)
+                    .then(b.1.best_bps.cmp(&a.1.best_bps))
+            });
+            for (key, s) in rows.iter().take(8) {
+                tracing::info!(
+                    route = key.as_str(),
+                    best_bps = s.best_bps,
+                    positive_samples = s.positive_samples,
+                    longest_positive_run = s.longest_positive_run,
+                    samples = s.samples,
+                    "survey route"
+                );
+            }
         }
     }
 }
