@@ -7,6 +7,7 @@ pub mod replay;
 pub mod relay;
 pub mod rpc;
 pub mod scanner;
+pub mod survey;
 
 pub use amm::{optimal_amount_in, CycleLegs, OptimalSize};
 pub use kernel::evaluate_opportunity;
