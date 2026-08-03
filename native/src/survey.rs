@@ -264,6 +264,146 @@ pub fn report(stats: &BTreeMap<String, RouteStats>) -> String {
     out
 }
 
+/// Price every route from a single snapshot of reserves.
+///
+/// Reserves are fetched once per pair, not once per route. With 12 tokens on 3
+/// venues there are 36 pairs but 72 directed routes; pricing each route
+/// independently would double the RPC cost for identical data, and — worse —
+/// could read the two legs of one route at different chain states.
+fn price_from_snapshot(
+    routes: &[Route],
+    reserves: &BTreeMap<String, (u128, u128)>,
+    probe_bps: u32,
+) -> Vec<(String, i64)> {
+    let mut out = Vec::with_capacity(routes.len());
+    for route in routes {
+        let (Some(&(buy_token, buy_quote)), Some(&(sell_token, sell_quote))) =
+            (reserves.get(&route.buy_pair), reserves.get(&route.sell_pair))
+        else {
+            continue;
+        };
+        let legs = CycleLegs {
+            buy_reserve_in: buy_token,
+            buy_reserve_out: buy_quote,
+            buy_fee_bps: route.buy_fee_bps,
+            sell_reserve_in: sell_quote,
+            sell_reserve_out: sell_token,
+            sell_fee_bps: route.sell_fee_bps,
+        };
+        let probe = buy_token / 10_000 * probe_bps as u128;
+        if probe == 0 {
+            continue;
+        }
+        let back = legs.round_trip_out(probe);
+        let delta = back as i128 - probe as i128;
+        out.push((route.key(), ((delta * 10_000) / probe as i128) as i64));
+    }
+    out
+}
+
+/// Run the survey until the process stops.
+///
+/// Observation only: no signer, no relay, no execution path is reachable from
+/// here. The output is a persistence report on stdout.
+pub async fn run_survey(rpc: BscRpcClient) -> Result<()> {
+    let Some(config) = load_config()? else {
+        tracing::info!("survey is disabled or unconfigured; no routes will be measured");
+        return Ok(());
+    };
+
+    let routes = build_routes(&rpc, &config).await?;
+    if routes.is_empty() {
+        tracing::warn!("survey found no token listed on two or more venues");
+        return Ok(());
+    }
+    let mut unique_pairs: Vec<String> = routes
+        .iter()
+        .flat_map(|r| [r.buy_pair.clone(), r.sell_pair.clone()])
+        .collect();
+    unique_pairs.sort();
+    unique_pairs.dedup();
+    let orientation: BTreeMap<String, bool> = routes
+        .iter()
+        .flat_map(|r| {
+            [
+                (r.buy_pair.clone(), r.token_is_reserve0),
+                (r.sell_pair.clone(), r.token_is_reserve0),
+            ]
+        })
+        .collect();
+
+    let sample_every = match config.mode {
+        SurveyMode::Focused => 1,
+        SurveyMode::Wide => config.sample_every_n_blocks.max(1),
+    };
+    tracing::info!(
+        routes = routes.len(),
+        pairs = unique_pairs.len(),
+        mode = ?config.mode,
+        sample_every_n_blocks = sample_every,
+        "survey starting"
+    );
+
+    let mut stats: BTreeMap<String, RouteStats> = BTreeMap::new();
+    let mut last_block = 0_u64;
+    let mut samples_taken = 0_u64;
+
+    loop {
+        let head = match rpc.latest_block().await {
+            Ok(block) => block,
+            Err(error) => {
+                tracing::warn!(%error, "survey could not read the chain head");
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                continue;
+            }
+        };
+        let block_number = crate::rpc::parse_hex_u64(&head.number)?;
+        if last_block != 0 && block_number < last_block + sample_every {
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+            continue;
+        }
+        last_block = block_number;
+
+        // Pin every read to one block so the two legs of a route can never be
+        // priced against different chain states.
+        let block_tag = format!("0x{block_number:x}");
+        let mut reserves = BTreeMap::new();
+        for pair in &unique_pairs {
+            match rpc.call_contract(pair, GET_RESERVES, &block_tag).await {
+                Ok(raw) => {
+                    let token_is_reserve0 = orientation.get(pair).copied().unwrap_or(true);
+                    if let Ok(oriented) = parse_oriented(&raw, token_is_reserve0) {
+                        reserves.insert(pair.clone(), oriented);
+                    }
+                }
+                Err(error) => tracing::debug!(%error, %pair, "reserve read failed"),
+            }
+        }
+
+        for (key, bps) in price_from_snapshot(&routes, &reserves, config.probe_bps) {
+            stats.entry(key).or_default().record(bps);
+        }
+        samples_taken += 1;
+
+        // Report periodically rather than every sample; the interesting signal
+        // is accumulated persistence, not any single reading.
+        if samples_taken % 20 == 0 {
+            let positive: Vec<&String> = stats
+                .iter()
+                .filter(|(_, s)| s.positive_samples > 0)
+                .map(|(k, _)| k)
+                .collect();
+            tracing::info!(
+                block_number,
+                samples_taken,
+                routes_ever_positive = positive.len(),
+                "survey progress\n{}",
+                report(&stats)
+            );
+        }
+    }
+}
+
 pub fn load_config() -> Result<Option<SurveyConfig>> {
     let Ok(raw) = std::env::var("MEV_SURVEY_CONFIG_JSON") else {
         return Ok(None);

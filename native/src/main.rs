@@ -376,6 +376,21 @@ async fn main() -> anyhow::Result<()> {
     // liveExecutionEnabled, MEV_LIVE_EXECUTION_ENABLED on the control plane, a
     // deployed executor address, and all three allowlists. A scanner running
     // without those observes and settles; it cannot execute.
+    // Opportunity survey. Observation only — it has no signer, no relay and no
+    // execution path, so it is safe to run alongside a live scanner. Its job is
+    // to answer whether any route holds a dislocation long enough for a system
+    // that arrives a block late to reach it.
+    if env::var("MEV_SURVEY_CONFIG_JSON").is_ok() {
+        let survey_rpc = state.rpc.clone().ok_or_else(|| {
+            anyhow::anyhow!("BSC_RPC_URL is required when the survey is configured")
+        })?;
+        tokio::spawn(async move {
+            if let Err(error) = dividendpro_mev::survey::run_survey(survey_rpc).await {
+                tracing::error!(%error, "opportunity survey stopped");
+            }
+        });
+    }
+
     if env::var("MEV_SCANNER_CONFIG_JSON").is_ok() {
         let scanner_rpc = state.rpc.clone().ok_or_else(|| anyhow::anyhow!(
             "BSC_RPC_URL is required when the scanner is configured"
