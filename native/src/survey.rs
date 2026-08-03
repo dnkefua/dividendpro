@@ -71,6 +71,31 @@ pub struct SurveyConfig {
     /// Sample every N blocks. Ignored in `Focused` mode, which samples each block.
     #[serde(default = "default_sample_every")]
     pub sample_every_n_blocks: u64,
+    /// Minimum quote-token reserve, in wei, for BOTH legs of a route.
+    ///
+    /// Without this, persistence selects for irrelevance. The first run flagged
+    /// four routes positive on 20/20 samples — including ALPACA at +115 bps —
+    /// and every one ran through an abandoned pool: $10, $250, $450 of total
+    /// liquidity. They persist *because* they are worthless; nobody arbitrages
+    /// ten dollars, so the price drifts freely. The apparent edge was real
+    /// arithmetic over meaningless depth.
+    #[serde(default = "default_min_quote_reserve_wei")]
+    pub min_quote_reserve_wei: String,
+    /// Minimum absolute round-trip profit, in quote wei, for a sample to count
+    /// as positive. A basis-point gain on a dust pool is cents; gas is not.
+    #[serde(default = "default_min_abs_profit_wei")]
+    pub min_abs_profit_wei: String,
+}
+
+fn default_min_quote_reserve_wei() -> String {
+    // 50 WBNB per side (~$29k). Below this, a trade large enough to clear gas
+    // moves the pool more than the dislocation it is chasing.
+    "50000000000000000000".to_string()
+}
+
+fn default_min_abs_profit_wei() -> String {
+    // 0.002 WBNB (~$1.20) — comfortably above the ~$0.23–0.40 gas estimate.
+    "2000000000000000".to_string()
 }
 
 fn default_probe_bps() -> u32 {
@@ -274,6 +299,8 @@ fn price_from_snapshot(
     routes: &[Route],
     reserves: &BTreeMap<String, (u128, u128)>,
     probe_bps: u32,
+    min_quote_reserve: u128,
+    min_abs_profit: u128,
 ) -> Vec<(String, i64)> {
     let mut out = Vec::with_capacity(routes.len());
     for route in routes {
@@ -282,6 +309,11 @@ fn price_from_snapshot(
         else {
             continue;
         };
+        // Both legs must be deep enough to matter. Skipping outright rather
+        // than recording a negative keeps dust pools out of the sample entirely.
+        if buy_quote < min_quote_reserve || sell_quote < min_quote_reserve {
+            continue;
+        }
         let legs = CycleLegs {
             buy_reserve_in: buy_token,
             buy_reserve_out: buy_quote,
@@ -296,7 +328,14 @@ fn price_from_snapshot(
         }
         let back = legs.round_trip_out(probe);
         let delta = back as i128 - probe as i128;
-        out.push((route.key(), ((delta * 10_000) / probe as i128) as i64));
+        // A gain too small to clear gas is not an opportunity, whatever its bps.
+        // Report it as non-positive so it cannot accumulate a persistence run.
+        let bps = if delta > 0 && (delta as u128) < min_abs_profit {
+            0
+        } else {
+            ((delta * 10_000) / probe as i128) as i64
+        };
+        out.push((route.key(), bps));
     }
     out
 }
@@ -344,6 +383,16 @@ pub async fn run_survey(rpc: BscRpcClient) -> Result<()> {
         "survey starting"
     );
 
+    let min_quote_reserve: u128 = config
+        .min_quote_reserve_wei
+        .parse()
+        .context("minQuoteReserveWei is not a valid integer")?;
+    let min_abs_profit: u128 = config
+        .min_abs_profit_wei
+        .parse()
+        .context("minAbsProfitWei is not a valid integer")?;
+    tracing::info!(%min_quote_reserve, %min_abs_profit, "survey liquidity floors");
+
     let mut stats: BTreeMap<String, RouteStats> = BTreeMap::new();
     let mut last_block = 0_u64;
     let mut samples_taken = 0_u64;
@@ -380,7 +429,13 @@ pub async fn run_survey(rpc: BscRpcClient) -> Result<()> {
             }
         }
 
-        for (key, bps) in price_from_snapshot(&routes, &reserves, config.probe_bps) {
+        for (key, bps) in price_from_snapshot(
+            &routes,
+            &reserves,
+            config.probe_bps,
+            min_quote_reserve,
+            min_abs_profit,
+        ) {
             stats.entry(key).or_default().record(bps);
         }
         samples_taken += 1;
@@ -447,6 +502,43 @@ pub fn load_config() -> Result<Option<SurveyConfig>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn dust_route() -> Route {
+        Route { token: "0xaa".into(), buy_venue: "PCS".into(), sell_venue: "BSW".into(),
+            buy_pair: "0xp1".into(), sell_pair: "0xp2".into(),
+            buy_fee_bps: 25, sell_fee_bps: 20, token_is_reserve0: true }
+    }
+
+    /// The first live run flagged four routes positive on 20/20 samples, topped
+    /// by +115 bps. Every one ran through an abandoned pool — $10, $250, $450 of
+    /// liquidity. They persisted *because* nobody arbitrages ten dollars. Without
+    /// a depth floor, the persistence metric selects for irrelevance.
+    #[test]
+    fn dust_pools_are_excluded_entirely() {
+        let routes = vec![dust_route()];
+        let mut reserves = BTreeMap::new();
+        // ~0.0088 WBNB — the real ALPACA/Biswap pool that produced +115 bps.
+        reserves.insert("0xp1".to_string(), (9_165_000_000_000_000_000_000_u128, 8_800_000_000_000_000_u128));
+        reserves.insert("0xp2".to_string(), (9_367_469_000_000_000_000_000_000_u128, 8_862_100_000_000_000_000_u128));
+        let floor = 50_000_000_000_000_000_000_u128; // 50 WBNB
+        let priced = price_from_snapshot(&routes, &reserves, 5, floor, 0);
+        assert!(priced.is_empty(), "a dust leg must be skipped, not scored");
+    }
+
+    /// A bps gain too small to clear gas must not accumulate a persistence run.
+    #[test]
+    fn sub_gas_gains_do_not_count_as_positive() {
+        let routes = vec![dust_route()];
+        let mut reserves = BTreeMap::new();
+        let deep = 1_000_000_000_000_000_000_000_u128; // 1000 WBNB, passes the floor
+        reserves.insert("0xp1".to_string(), (2_000_000_000_000_000_000_000_000_u128, deep));
+        reserves.insert("0xp2".to_string(), (2_000_000_000_000_000_000_000_000_u128, deep));
+        // An impossibly high absolute floor forces any gain to be discounted.
+        let priced = price_from_snapshot(&routes, &reserves, 5, 0, u128::MAX);
+        for (_, bps) in priced {
+            assert!(bps <= 0, "a gain below the gas floor must not read positive");
+        }
+    }
 
     #[test]
     fn persistence_run_tracks_the_longest_unbroken_streak() {
