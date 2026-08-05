@@ -50,6 +50,7 @@ export interface UserSettings {
   compactView: boolean;
   biometricUnlock: boolean;
   isPro: boolean;
+  tier: "free" | "pro" | "institutional";
   portfolioBudget: number;
   currency: string;
 }

@@ -1419,6 +1419,7 @@ export const initialSettings: UserSettings = {
   compactView: false,
   biometricUnlock: true,
   isPro: true,
+  tier: "pro",
   portfolioBudget: 10000,
   currency: "USD"
 };

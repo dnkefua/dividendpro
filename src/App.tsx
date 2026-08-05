@@ -50,7 +50,7 @@ import OnboardingWizard from "./components/OnboardingWizard";
 import PricingModal from "./components/PricingModal";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab" | "AlphaHub" | "Hummingbot">("AlphaHub");
+  const [activeView, setActiveView] = useState<"Portfolio" | "Scanner" | "Analysis" | "Top10" | "Settings" | "Studio" | "Vibe" | "BSC" | "StrategyLab" | "AlphaHub" | "Hummingbot">("Portfolio");
   const [signInError, setSignInError] = useState<string | null>(null);
   
   const [stocks, setStocks] = useState<Stock[]>(() => {
@@ -87,7 +87,7 @@ export default function App() {
       const parsed = JSON.parse(saved) as UserSettings & { geminiApiKey?: unknown; alchemyApiKey?: unknown };
       delete parsed.geminiApiKey;
       delete parsed.alchemyApiKey;
-      return { ...initialSettings, ...parsed };
+      return { ...initialSettings, ...parsed, tier: parsed.tier || (parsed.isPro ? "pro" : "free") };
     } catch {
       return initialSettings;
     }
@@ -425,43 +425,14 @@ export default function App() {
             <Lumina3DLogo size={38} showText={true} />
           </div>
 
-          {/* Group 1: ⚡ QUANT & EXECUTION */}
           <div>
-            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚡ ALPHA & EXECUTION</div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">📊 PORTFOLIO</div>
             <div className="space-y-1">
               {[
-                { id: "AlphaHub", label: "Quant Alpha Hub", icon: Zap },
-                { id: "Hummingbot", label: "Hummingbot Gateway", icon: Bot },
-                { id: "Vibe", label: "Vibe AI Swarm", icon: Sparkles },
-                { id: "StrategyLab", label: "Strategy Lab", icon: BarChart2 }
-              ].map(item => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                      activeView === item.id 
-                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
-                        : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Group 2: 📈 DEFI & MARKETS */}
-          <div>
-            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">📈 DEFI & MARKETS</div>
-            <div className="space-y-1">
-              {[
-                { id: "BSC", label: "BSC Web3 Terminal", icon: Link },
                 { id: "Portfolio", label: "Portfolio Vault", icon: Layers },
-                { id: "Scanner", label: "Market Scanner", icon: Search }
+                { id: "Scanner", label: "Market Scanner", icon: Search },
+                { id: "Analysis", label: "Analysis", icon: TrendingUp },
+                { id: "Top10", label: "Top 10 Rankings", icon: Award }
               ].map(item => {
                 const Icon = item.icon;
                 return (
@@ -482,14 +453,65 @@ export default function App() {
             </div>
           </div>
 
-          {/* Group 3: ⚙️ PLATFORM */}
           <div>
-            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚙️ PLATFORM</div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚡ TRADING & AI</div>
             <div className="space-y-1">
               {[
-                { id: "Studio", label: "Quant Studio", icon: Activity },
-                { id: "Top10", label: "Top 10 Rankings", icon: Award },
-                { id: "Settings", label: "Settings & Keys", icon: Settings }
+                { id: "Vibe", label: "Vibe AI Swarm", icon: Sparkles },
+                { id: "StrategyLab", label: "Strategy Lab", icon: BarChart2 },
+                { id: "Studio", label: "Quant Studio", icon: Activity }
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeView === item.id 
+                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">🔬 RESEARCH</div>
+            <div className="space-y-1">
+              {[
+                { id: "AlphaHub", label: "MEV Research", icon: Zap },
+                { id: "BSC", label: "BSC Wallet", icon: Link },
+                { id: "Hummingbot", label: "Hummingbot", icon: Bot }
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveView(item.id as any); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeView === item.id 
+                        ? "bg-white/10 border border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">⚙️ SETTINGS</div>
+            <div className="space-y-1">
+              {[
+                { id: "Settings", label: "Settings", icon: Settings }
               ].map(item => {
                 const Icon = item.icon;
                 return (
@@ -525,7 +547,7 @@ export default function App() {
             />
             <div>
               <p className="text-xs font-bold text-slate-200">{settings.name}</p>
-              <p className="text-[10px] font-extrabold text-emerald-400">PRO MEMBER</p>
+              <p className="text-[10px] font-extrabold text-emerald-400">{settings.tier === "institutional" ? "INSTITUTIONAL" : settings.tier === "pro" ? "PRO MEMBER" : "STARTER"}</p>
             </div>
           </div>
         </div>
@@ -548,7 +570,15 @@ export default function App() {
             </button>
 
             <span className="text-xs font-extrabold text-slate-400">
-              Lumina Finance / <strong className="text-white text-sm">{activeView}</strong>
+              DividendPro / <strong className="text-white text-sm">{
+                activeView === "AlphaHub" ? "MEV Research" :
+                activeView === "BSC" ? "BSC Wallet" :
+                activeView === "Vibe" ? "Vibe AI Swarm" :
+                activeView === "StrategyLab" ? "Strategy Lab" :
+                activeView === "Studio" ? "Quant Studio" :
+                activeView === "Hummingbot" ? "Hummingbot" :
+                activeView
+              }</strong>
             </span>
           </div>
 
@@ -788,8 +818,8 @@ export default function App() {
         {[
           { id: "Portfolio", label: "Portfolio", icon: Layers },
           { id: "Scanner", label: "Scanner", icon: Search },
-          { id: "BSC", label: "BSC", icon: Link },
-          { id: "StrategyLab", label: "Strategy", icon: BarChart2 },
+          { id: "Analysis", label: "Analysis", icon: TrendingUp },
+          { id: "Top10", label: "Top 10", icon: Award },
           { id: "Settings", label: "Settings", icon: Settings }
         ].map(item => {
           const Icon = item.icon;
@@ -823,7 +853,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-base">Lumina Dividend AI Analyst</h3>
-                  <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">Real-time financial modeling, yield simulation & HFT insights</p>
+                  <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">Dividend safety analysis, yield research & compound projections</p>
                 </div>
               </div>
               <button 
@@ -864,9 +894,9 @@ export default function App() {
             {/* Quick Suggestion Questions */}
             <div className="px-6 py-3 bg-[#0f172a] border-t border-white/10 flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
               {[
-                { label: "Is AVGO safe?", q: "What is the dividend safety of Broadcom (AVGO) given its current payout ratio?" },
-                { label: "High yield trap?", q: "Explain why Global Net Lease (GNL) has a 9.30% yield and if it's a dividend trap." },
-                { label: "Compound projection", q: "Show me a mathematical compound interest simulation where I invest $2,000 every month in Realty Income (O) at a 5.64% yield. How much monthly income in 15 years?" }
+                { label: "Is AVGO safe?", q: "What is the dividend safety of Broadcom (AVGO) given its current payout ratio and free cash flow?" },
+                { label: "High yield trap?", q: "Is Global Net Lease (GNL) with its 9.30% yield a dividend trap? Analyze the payout sustainability." },
+                { label: "DRIP projection", q: "If I invest $2,000/month in Realty Income (O) at 5.64% yield with DRIP, what's my projected monthly income in 15 years?" }
               ].map((s, i) => (
                 <button
                   key={i}
@@ -888,7 +918,7 @@ export default function App() {
                   type="text" 
                   value={currentChatInput}
                   onChange={(e) => setCurrentChatInput(e.target.value)}
-                  placeholder="Ask Lumina about stocks, HFT yields, compound formulas..."
+                  placeholder="Ask about dividend safety, yields, or compound growth..."
                   className="flex-grow px-4 py-3 border border-white/15 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder-slate-500 font-medium bg-[#090d16]"
                 />
                 <button 
@@ -928,8 +958,8 @@ export default function App() {
           setIsOnboardingOpen(false);
         }}
         onSelectPersona={(persona) => {
-          if (persona === "defi") setActiveView("BSC");
-          else if (persona === "trader") setActiveView("StrategyLab");
+          if (persona === "trading") setActiveView("Vibe");
+          else if (persona === "research") setActiveView("BSC");
           else setActiveView("Portfolio");
         }}
       />
@@ -937,6 +967,7 @@ export default function App() {
       <PricingModal
         isOpen={isPricingOpen}
         onClose={() => setIsPricingOpen(false)}
+        currentTier={settings.tier || (settings.isPro ? "pro" : "free")}
       />
 
     </div>

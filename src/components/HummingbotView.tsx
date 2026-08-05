@@ -68,10 +68,10 @@ export default function HummingbotView() {
           </div>
           <div>
             <h1 style={{ fontSize: "24px", fontWeight: 900, color: "#f8fafc", margin: 0 }}>
-              Hummingbot REST Gateway Controller
+              Hummingbot Gateway — Research Only
             </h1>
             <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
-              Algorithmic CEX ↔ DEX Arbitrage, Pure Market Making Grid & Liquidity Mining Engine
+              Offline. No bots are running or profits being generated. Connect requires authenticated endpoints.
             </p>
           </div>
         </div>

@@ -102,12 +102,11 @@ export default function QuantAlphaHub({ authUser }: QuantAlphaHubProps) {
           <div>
             <div style={{ display: "flex", gap: "9px", alignItems: "center" }}>
               <Cpu color="#a78bfa" size={22} />
-              <h2 style={{ margin: 0, color: "#f8fafc", fontSize: "20px" }}>Autonomous MEV Truth Layer</h2>
+              <h2 style={{ margin: 0, color: "#f8fafc", fontSize: "20px" }}>MEV Research Dashboard</h2>
             </div>
             <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.6, maxWidth: "760px", marginBottom: 0 }}>
-              Historical and current BSC observations remain simulation evidence until every calibrated 85% gate passes.
-              Promotion is server-authoritative: SIMULATION automatically enters a USD 25 mainnet canary, then LIVE only
-              after 20 finalized, reconciled canary executions and zero evidence failures.
+              <strong style={{ color: "#f59e0b" }}>Research only.</strong> No live execution is active. Historical and current BSC observations remain simulation evidence until every calibrated 85% gate passes.
+              Promotion is server-authoritative: SIMULATION → CANARY_LIVE (capped USD 25) → LIVE only after 20 finalized canary executions with zero evidence failures.
             </p>
           </div>
           <button

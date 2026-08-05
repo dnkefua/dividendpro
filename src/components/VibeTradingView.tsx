@@ -65,11 +65,12 @@ export default function VibeTradingView({ stocks, transactions, settings }: Vibe
   // Auto-run initial backtest on load so Vibe Trading is immediately active
   useEffect(() => {
     setDebateResult({
-      macro: `Macro momentum for ${selectedSymbol} is positive. Institutional liquidity metrics and order flow support momentum accumulation above key moving averages.`,
-      bear: `Watch out for overhead technical resistance. Recommended to maintain a strict trailing stop-loss to guard against intraday volatility.`,
-      risk: `Recommended Kelly Criterion position size: 3.5% of total equity. Use 2.0x ATR for dynamic stop placement.`,
-      consensus: `BUY CONFIRMED — AI Investment Committee rates setup as HIGH CONVICTION (Vibe Score: 86/100).`,
-      score: 86
+      macro: `[DEMO] Macro momentum analysis for ${selectedSymbol}. In production, the AI committee will provide a real macro perspective based on live market data.`,
+      bear: `[DEMO] Simulated bear perspective. Sign in and configure the AI service for live analysis.`,
+      risk: `[DEMO] Simulated risk parameters. Live mode provides ATR-based position sizing and stop-loss recommendations.`,
+      consensus: `[DEMO] This is a demonstration score. Run your own strategy prompt for a live AI debate.`,
+      score: 72,
+      _simulation: true
     });
     runBacktest(selectedSymbol, vibePrompt);
   }, []);

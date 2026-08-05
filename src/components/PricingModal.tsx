@@ -1,65 +1,101 @@
-import React from "react";
-import { X, Check, Zap, Crown, ShieldCheck, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { X, Check, Crown, Sparkles, BarChart2 } from "lucide-react";
 
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentTier?: string;
 }
 
-export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
+export default function PricingModal({ isOpen, onClose, currentTier = "free" }: PricingModalProps) {
+  const [processingTier, setProcessingTier] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const tiers = [
     {
+      id: "free",
       name: "Starter",
       price: "$0",
       period: "Free Forever",
-      desc: "Essential dividend tracking & monthly payout calendar",
-      buttonText: "Current Plan",
+      desc: "Essential dividend tracking & AI analysis",
+      buttonText: currentTier === "free" ? "Current Plan" : "Downgrade",
       buttonStyle: "bg-slate-800 text-slate-300 cursor-default",
       features: [
-        "Portfolio yield tracker",
-        "Quarterly dividend calendar",
+        "Portfolio yield tracker with live quotes",
+        "Dividend calendar & payout tracking",
         "5 Gemini AI stock audits / month",
-        "Standard market data refresh"
+        "Market scanner with real-time movers",
+        "Watchlist with price alerts",
+        "DRIP compound growth calculator"
       ]
     },
     {
+      id: "pro",
       name: "Pro Investor",
-      price: "$29",
+      price: "$15",
       period: "/ month",
       popular: true,
-      desc: "For active yield investors seeking institutional safety analytics",
-      buttonText: "Upgrade to Pro",
-      buttonStyle: "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:brightness-110 shadow-lg shadow-emerald-500/20",
+      desc: "For active yield investors seeking institutional analytics",
+      buttonText: currentTier === "pro" ? "Current Plan" : "Upgrade to Pro",
+      buttonStyle: currentTier === "pro"
+        ? "bg-slate-800 text-slate-300 cursor-default"
+        : "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:brightness-110 shadow-lg shadow-emerald-500/20",
       features: [
         "Unlimited Gemini AI fundamental audits",
-        "Covered Call & Cash-Secured Put scanner",
+        "Real-time options chain data & covered calls",
+        "US Treasury yield macro overlays",
         "Interactive DRIP & FIRE Freedom Simulator",
-        "Real-time DeFi yield pool streaming",
-        "Custom Telegram instant yield alerts"
+        "Crypto yield pool data via DefiLlama",
+        "Strategy Lab backtesting engine",
+        "Priority market data refresh"
       ]
     },
     {
-      name: "Whale / Bot Tier",
+      id: "institutional",
+      name: "Institutional",
       price: "$99",
       period: "/ month",
-      desc: "Automated Web3 Mempool Sniping & AI Investment Swarm",
-      buttonText: "Unlock Whale Tier",
-      buttonStyle: "bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:brightness-110 shadow-lg shadow-purple-500/20",
+      desc: "API access, bulk screening, custom strategies",
+      buttonText: currentTier === "institutional" ? "Current Plan" : "Contact Sales",
+      buttonStyle: currentTier === "institutional"
+        ? "bg-slate-800 text-slate-300 cursor-default"
+        : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:brightness-110 shadow-lg shadow-purple-500/20",
       features: [
-        "BSC Automated Token Sniper Bot",
-        "Low-latency PancakeSwap router fees bypass",
-        "Vibe Trading AI Agent Swarm backtester",
-        "Multi-wallet auto-rebalancing engine",
-        "Priority API bandwidth & dedicated WebSocket"
+        "Everything in Pro Investor",
+        "REST API access for programmatic screening",
+        "Bulk dividend safety screening (100+ stocks)",
+        "Custom strategy backtesting with export",
+        "BSC wallet monitoring & settlement verification",
+        "Webhook price & dividend alerts",
+        "Dedicated support & onboarding"
       ]
     }
   ];
 
+  const handleSelectTier = (tierId: string) => {
+    if (tierId === currentTier) return;
+    setProcessingTier(tierId);
+
+    // In production, this would redirect to Stripe Checkout:
+    // const stripe = await loadStripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+    // const { sessionId } = await fetch('/api/stripe/checkout', { method: 'POST', ... });
+    // stripe.redirectToCheckout({ sessionId });
+
+    // For now, show a coming-soon message
+    setTimeout(() => {
+      alert(
+        tierId === "institutional"
+          ? "Institutional tier requires setting up a Stripe payment flow. Please contact support@dividendpro.app to get started."
+          : "Payment integration coming soon! Your account will be upgraded once Stripe Checkout is configured. For now, all Pro features are available during the beta period."
+      );
+      setProcessingTier(null);
+    }, 500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div 
+      <div
         className="w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden glass-panel p-6"
         onClick={e => e.stopPropagation()}
       >
@@ -70,8 +106,8 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
               <Crown className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Upgrade DividendPro Tier</h2>
-              <p className="text-xs text-slate-400">Unlock institutional analytics, options labs, and automated Web3 bots</p>
+              <h2 className="text-lg font-bold text-slate-100">Choose Your Plan</h2>
+              <p className="text-xs text-slate-400">Unlock institutional-grade dividend analytics & AI research</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition">
@@ -82,8 +118,8 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
         {/* Pricing Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {tiers.map((t) => (
-            <div 
-              key={t.name}
+            <div
+              key={t.id}
               className={`p-6 rounded-2xl border flex flex-col justify-between relative transition ${
                 t.popular ? "border-emerald-500/60 bg-emerald-950/10 shadow-xl" : "border-slate-800 bg-slate-950/50"
               }`}
@@ -113,14 +149,20 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                 </div>
               </div>
 
-              <button 
+              <button
                 className={`w-full py-2.5 rounded-xl text-xs transition mt-4 ${t.buttonStyle}`}
-                onClick={() => alert(`Subscribed to ${t.name} plan!`)}
+                onClick={() => handleSelectTier(t.id)}
+                disabled={processingTier === t.id}
               >
-                {t.buttonText}
+                {processingTier === t.id ? "Processing..." : t.buttonText}
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Trust footer */}
+        <div className="mt-6 text-center text-[11px] text-slate-500">
+          All plans include Firebase-authenticated data sync. Cancel anytime. DividendPro does not provide financial advice — all analytics are for research purposes only.
         </div>
       </div>
     </div>

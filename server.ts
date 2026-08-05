@@ -101,6 +101,27 @@ async function startServer() {
   registerMevControlRoutes(app);
   registerMevExecutionRoutes(app);
 
+  // --- Subscription Tier Management ---
+  // Stores the user's subscription tier in Firestore. In production, this would
+  // be triggered by a Stripe webhook after successful payment.
+  app.post("/api/subscription", requireFirebaseAuth, async (req, res) => {
+    try {
+      const { tier } = req.body as { tier: string };
+      if (!["free", "pro", "institutional"].includes(tier)) {
+        return res.status(400).json({ error: "Invalid tier. Must be free, pro, or institutional." });
+      }
+      // In production, validate Stripe session/subscription before writing.
+      // For now, allow tier selection during beta.
+      const uid = (req as any).uid;
+      if (!uid) return res.status(401).json({ error: "Authenticated session required." });
+      // Firestore write is handled client-side; server just validates.
+      res.json({ tier, uid, environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "BETA" });
+    } catch (error: any) {
+      console.error("Subscription update failed:", error);
+      res.status(500).json({ error: error.message || "Failed to update subscription." });
+    }
+  });
+
   // API Routes
   app.post("/api/gemini/analyze", requireFirebaseAuth, async (req, res) => {
     try {
@@ -227,15 +248,16 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
 
       // Fallback/Simulation if API is down or missing key
       if (!result) {
-        const score = Math.floor(Math.random() * 40) + 50; // 50 to 90
+        const score = Math.floor(Math.random() * 40) + 50;
         const defaultSymbol = symbol || "the asset";
         
         result = {
-          macro: `The strategy of '${prompt}' on ${defaultSymbol} aligns well with short-term trend dynamics. Recent order flow shows strong momentum accumulation. However, macro conditions (Fed liquidity profile, yield curve changes) suggest that correlation coefficients across the sector are elevated, meaning we are trading market beta more than specific alpha. Recommended to run this during high-liquidity sessions only.`,
-          bear: `I see significant vulnerability here. The prompt assumes instant execution, but in reality, trading ${defaultSymbol} around these thresholds exposes us to severe slippage and front-running by high-frequency desks. Overhead structural resistance is dense, and any failure to hold the support triggers a cascade of margin liquidations. Volatility is clustering, which usually precedes a sharp downside reversion.`,
-          risk: `From a risk standpoint, this setup needs strict parameter constraints. Given the volatility of ${defaultSymbol}, we recommend a maximum position size of 1.5% of equity. Use an ATR-based (Average Tree Range) trailing stop-loss of 2.1x ATR. This reduces noise checkouts while preserving a solid 1:2.5 Risk-to-Reward ratio. Drawdown limit should trigger automatic trading halts at 5% aggregate loss.`,
-          consensus: `The committee rates this strategy as MODERATE. It captures core market imbalances but requires strict risk guidelines to avoid volatility traps. Optimized rule: Buy when volume exceeds 1.5x of the 20-period moving average and price is above the daily VWAP; exit with an 8-period EMA trailing stop.`,
-          score
+          macro: `[SIMULATION] The strategy of '${prompt}' on ${defaultSymbol} — this is a simulated analysis because the AI service is unavailable. Do not trade on this output. In live mode, this would contain a macro analyst perspective with pros/cons based on real market data.`,
+          bear: `[SIMULATION] Simulated bear perspective for ${defaultSymbol}. In production, this would highlight pitfalls, resistance levels, and market headwinds from real analysis.`,
+          risk: `[SIMULATION] Simulated risk parameters. In production, this would suggest position sizes and stop losses based on actual volatility data.`,
+          consensus: `[SIMULATION] Simulated consensus. The AI debate engine is offline — this score is random and not based on market data.`,
+          score,
+          _simulation: true
         };
       }
 
@@ -704,30 +726,106 @@ Do not return any markdown formatting or extra text, just the raw JSON.`,
     }
   });
 
-  // --- LSE REST API Mocks ---
-  app.get("/api/lse/options", (req, res) => {
-    const symbol = String(req.query.symbol || "AAPL");
-    // Mocking the LSE Options Chain Response for Covered Calls
-    const currentPrice = 150; // Mock base price
-    const mockOptions = [
-      { strike: currentPrice * 1.05, expiry: "30 Days", premium: 2.45, impliedVol: 24.5 },
-      { strike: currentPrice * 1.10, expiry: "30 Days", premium: 1.10, impliedVol: 22.1 },
-      { strike: currentPrice * 1.15, expiry: "30 Days", premium: 0.45, impliedVol: 20.8 }
-    ];
-    res.json({ symbol, currentPrice, chain: mockOptions, environment: "SIMULATION", source: "STATIC_OPTIONS_MODEL" });
+  // --- Options Chain (Yahoo Finance) ---
+  app.get("/api/lse/options", async (req, res) => {
+    try {
+      const symbol = String(req.query.symbol || "AAPL");
+      const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(symbol)}`;
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!response.ok) throw new Error(`Yahoo Options failed: ${response.statusText}`);
+      const data = await response.json();
+      const result = data.optionChain?.result?.[0];
+      if (!result) return res.status(404).json({ error: `No options data for ${symbol}` });
+
+      const quote = result.quote || {};
+      const currentPrice = quote.regularMarketPrice || 0;
+      const calls = (result.options || []).flatMap((opt: any) => opt.calls || []);
+      const puts = (result.options || []).flatMap((opt: any) => opt.puts || []);
+
+      const nearbyCalls = calls
+        .filter((c: any) => c.strike >= currentPrice * 0.95 && c.strike <= currentPrice * 1.15)
+        .slice(0, 8)
+        .map((c: any) => ({
+          strike: c.strike,
+          expiry: c.expirationDate ? new Date(c.expirationDate * 1000).toISOString().split("T")[0] : "N/A",
+          premium: c.lastPrice || c.ask || 0,
+          impliedVol: (c.impliedVolatility || 0) * 100,
+          bid: c.bid || 0,
+          ask: c.ask || 0,
+          volume: c.volume || 0,
+          openInterest: c.openInterest || 0,
+          type: "call"
+        }));
+
+      const nearbyPuts = puts
+        .filter((p: any) => p.strike >= currentPrice * 0.85 && p.strike <= currentPrice * 1.05)
+        .slice(0, 8)
+        .map((p: any) => ({
+          strike: p.strike,
+          expiry: p.expirationDate ? new Date(p.expirationDate * 1000).toISOString().split("T")[0] : "N/A",
+          premium: p.lastPrice || p.ask || 0,
+          impliedVol: (p.impliedVolatility || 0) * 100,
+          bid: p.bid || 0,
+          ask: p.ask || 0,
+          volume: p.volume || 0,
+          openInterest: p.openInterest || 0,
+          type: "put"
+        }));
+
+      res.json({
+        symbol,
+        currentPrice,
+        chain: [...nearbyCalls, ...nearbyPuts],
+        environment: "LIVE_DATA",
+        source: "YAHOO_FINANCE_OPTIONS"
+      });
+    } catch (error: any) {
+      console.error("Options chain fetch failed:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch options chain" });
+    }
   });
 
-  app.get("/api/lse/macro", (req, res) => {
-    // Mocking LSE Macroeconomic data for overlays
-    res.json({
-      series: "US 10-Year Treasury Yield",
-      environment: "SIMULATION",
-      source: "STATIC_MACRO_MODEL",
-      data: Array.from({length: 30}, (_, i) => ({
-        time: new Date(Date.now() - (30 - i) * 86400000).toISOString().split('T')[0],
-        value: 4.0 + Math.sin(i * 0.2) * 0.5
-      }))
-    });
+  // --- Macro Data (FRED / Treasury via Yahoo) ---
+  app.get("/api/lse/macro", async (req, res) => {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=1mo`;
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!response.ok) throw new Error(`Yahoo macro failed: ${response.statusText}`);
+      const data = await response.json();
+      const result = data.chart?.result?.[0];
+      if (!result) throw new Error("No macro data");
+
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const macroData = timestamps
+        .map((t: number, i: number) => ({
+          time: new Date(t * 1000).toISOString().split("T")[0],
+          value: closes[i] ?? 0
+        }))
+        .filter((d: any) => d.value > 0);
+
+      res.json({
+        series: "US 10-Year Treasury Yield (^TNX)",
+        environment: "LIVE_DATA",
+        source: "YAHOO_FINANCE",
+        data: macroData
+      });
+    } catch (error: any) {
+      console.error("Macro data fetch failed:", error);
+      res.json({
+        series: "US 10-Year Treasury Yield",
+        environment: "FALLBACK",
+        source: "STATIC_MODEL",
+        data: Array.from({length: 30}, (_, i) => ({
+          time: new Date(Date.now() - (30 - i) * 86400000).toISOString().split("T")[0],
+          value: 4.0 + Math.sin(i * 0.2) * 0.5
+        }))
+      });
+    }
   });
 
   // Vite Middleware for Development
